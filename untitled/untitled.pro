@@ -7,18 +7,26 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    cardmanager.cpp \
+    BasicCards.cpp \
+    CardManager.cpp \
+    DeckManager.cpp \
+    Player.cpp \
+    TrickCards.cpp \
+    WeiYan.cpp \
+    equipcards.cpp \
     main.cpp \
-    mainwindow.cpp \
-    player.cpp \
-    weiyan.cpp
+    mainwindow.cpp
 
 HEADERS += \
-    card.h \
-    cardmanager.h \
-    mainwindow.h \
-    player.h \
-    weiyan.h
+    BasicCards.h \
+    Card.h \
+    CardManager.h \
+    DeckManager.h \
+    EquipCards.h \
+    Player.h \
+    TrickCards.h \
+    WeiYan.h \
+    mainwindow.h
 
 FORMS += \
     mainwindow.ui

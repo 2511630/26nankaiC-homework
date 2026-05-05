@@ -3,7 +3,14 @@
 
 #include <QString>
 #include <vector>
+#include <memory>
 #include "Card.h"
+
+struct EquipmentArea {
+    std::shared_ptr<Card> weapon;
+    std::shared_ptr<Card> armor;
+    std::shared_ptr<Card> horse;
+};
 
 class Player {
 public:
@@ -11,16 +18,19 @@ public:
     int hp;
     int maxHp;
     int distance = 1;
-    std::vector<Card> handCards;
+    std::vector<std::shared_ptr<Card>> handCards;
+    EquipmentArea equipment;
 
     Player(QString n, int h) : name(n), hp(h), maxHp(h) {}
-    virtual ~Player() {} // 虚析构函数，保证继承安全
+    virtual ~Player() {}
 
     void takeDamage(int amount);
     void heal(int amount);
-    void drawCard(const Card& card);
+    void drawCard(std::shared_ptr<Card> card);
     void discardRandom(int count);
     bool isAlive() const { return hp > 0; }
+    void equipCard(std::shared_ptr<Card> card);
+    int getCurrentDistance() const;
 };
 
 #endif
