@@ -1,23 +1,19 @@
-#include "mainwindow.h"
+#include <QCoreApplication>
+#include <QDebug>      // <--- 必须加上这个头文件！
+#include "gamelogic.h"
 
-#include <QApplication>
-#include <QLocale>
-#include <QTranslator>
+int main(int argc, char *argv[]) {
+    QCoreApplication a(argc, argv);
 
-int main(int argc, char *argv[])
-{
-    QApplication a(argc, argv);
+    WeiYan weiyan;
+    Player enemy("敌人", 6);
 
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "untitled_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
-            break;
-        }
-    }
-    MainWindow w;
-    w.show();
-    return QCoreApplication::exec();
+    qDebug() << "--- 战斗开始 ---"; // 替换这里
+
+    weiyan.activateZhuangShi(2, 1);
+    weiyan.useSlash(&enemy);
+    weiyan.triggerKuangGu();
+
+    qDebug() << "--- 战斗结束 ---"; // 替换这里
+    return 0;
 }
