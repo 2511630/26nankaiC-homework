@@ -113,6 +113,13 @@ void HeroCardWidget::setSelected(bool selected) {
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , weiyan(nullptr)
+    , xusheng(nullptr)
+    , deck(nullptr)
+    , isWeiYanTurn(true)
+    , zhuangShiUsed(false)
+    , kuangGuTriggered(false)
+    , beiShuiAsked(false)
     , selectedHandCard(nullptr)
     , discardPileCount(0)
 {
