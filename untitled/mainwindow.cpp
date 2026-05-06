@@ -1,146 +1,122 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QPalette>
-#include <QBrush>
-#include <QPixmap>
-#include <QPainter>
+#include "WeiYan.h"
+#include "XuSheng.h"
+#include "DeckManager.h"
+#include "BasicCards.h"
+#include <QFile>
+#include <algorithm>
+#include <QMessageBox>
 
-CardWidget::CardWidget(const QString& cardName, QWidget* parent) : QLabel(parent), cardName(cardName), selected(false) {
+// ==================== CardWidget ====================
+CardWidget::CardWidget(const QString& cardName, int index, QWidget* parent)
+    : QLabel(parent), cardName(cardName), index(index), selected(false) {
     setFixedSize(108, 154);
     setAlignment(Qt::AlignCenter);
-    setStyleSheet(
-        "QLabel {"
-        " border: 2px solid rgba(176, 139, 85, 0.95);"
-        " border-radius: 10px;"
-        " background: rgba(22, 18, 15, 0.85);"
-        " color: #F5E6C8;"
-        "}"
-    );
     setCursor(Qt::PointingHandCursor);
+    setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; }");
 }
 
 void CardWidget::mousePressEvent(QMouseEvent* event) {
-    selected = !selected;
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(selected ? 24 : 0);
-    shadow->setOffset(0, selected ? -4 : 0);
-    shadow->setColor(QColor(245, 210, 120, selected ? 220 : 0));
-    setGraphicsEffect(shadow);
-
-    if (selected) {
-        setStyleSheet(
-            "QLabel {"
-            " border: 3px solid #F2C66D;"
-            " border-radius: 10px;"
-            " background: rgba(22, 18, 15, 0.85);"
-            " color: #FFF3D0;"
-            "}"
-        );
-    } else {
-        setStyleSheet(
-            "QLabel {"
-            " border: 2px solid rgba(176, 139, 85, 0.95);"
-            " border-radius: 10px;"
-            " background: rgba(22, 18, 15, 0.85);"
-            " color: #F5E6C8;"
-            "}"
-        );
-    }
+    Q_UNUSED(event);
     emit clicked(this);
-    QLabel::mousePressEvent(event);
 }
 
-HeroCardWidget::HeroCardWidget(const QString& heroName, const QString& imgPath, int maxHp, QWidget* parent) 
+// ==================== HeroCardWidget ====================
+HeroCardWidget::HeroCardWidget(const QString& heroName, const QString& imgPath, int maxHp, QWidget* parent)
     : QWidget(parent), heroName(heroName) {
     QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(6, 6, 6, 6);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(4);
 
     heroImage = new QLabel();
-    heroImage->setFixedSize(106, 142);
-    heroImage->setScaledContents(true);
-    heroImage->setStyleSheet("QLabel { border: 2px solid rgba(255, 227, 171, 0.95); border-radius: 10px; background: rgba(0, 0, 0, 0.35); }");
+    heroImage->setFixedSize(120, 160);
+    heroImage->setAlignment(Qt::AlignCenter);
+    heroImage->setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; }");
     
     QPixmap pixmap(imgPath);
     if (!pixmap.isNull()) {
-        heroImage->setPixmap(pixmap.scaled(106, 142, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+        heroImage->setPixmap(pixmap.scaled(115, 155, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        heroImage->setText(heroName);
     }
-    layout->addWidget(heroImage, 0, Qt::AlignCenter);
+    layout->addWidget(heroImage);
 
     hpLayout = new QHBoxLayout();
-    hpLayout->setSpacing(1);
+    hpLayout->setSpacing(2);
     hpLayout->setAlignment(Qt::AlignCenter);
-
+    
     for (int i = 0; i < maxHp; ++i) {
         QLabel* hpIcon = new QLabel();
-        hpIcon->setFixedSize(16, 16);
-        QPixmap hpPixmap("D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/red_hp.png");
-        if (!hpPixmap.isNull()) {
-            hpIcon->setPixmap(hpPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        }
+        hpIcon->setFixedSize(20, 20);
+        hpIcon->setAlignment(Qt::AlignCenter);
+        hpIcon->setStyleSheet("QLabel { background: #D32F2F; border-radius: 10px; }");
         hpIcons.append(hpIcon);
         hpLayout->addWidget(hpIcon);
     }
-    
     layout->addLayout(hpLayout);
-    
+
     hpLabel = new QLabel(heroName);
-    hpLabel->setStyleSheet("QLabel { font-size: 13px; color: #F6E6BF; text-align: center; font-weight: bold; }");
+    hpLabel->setStyleSheet("QLabel { color: #EED9AD; font-size: 13px; font-weight: bold; text-align: center; }");
     hpLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(hpLabel);
-
-    setLayout(layout);
 }
 
 void HeroCardWidget::setHp(int hp) {
     for (int i = 0; i < hpIcons.size(); ++i) {
-        QString path = (i < hp) ? "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/red_hp.png" : "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/green_hp.png";
-        QPixmap pixmap(path);
-        if (!pixmap.isNull()) {
-            hpIcons[i]->setPixmap(pixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        if (i < hp) {
+            hpIcons[i]->setStyleSheet("QLabel { background: #D32F2F; border-radius: 10px; }");
+        } else {
+            hpIcons[i]->setStyleSheet("QLabel { background: #4CAF50; border-radius: 10px; }");
         }
     }
 }
 
 void HeroCardWidget::setSelected(bool selected) {
-    QGraphicsDropShadowEffect* effect = new QGraphicsDropShadowEffect(heroImage);
-    effect->setColor(selected ? QColor(110, 240, 130, 240) : Qt::transparent);
-    effect->setBlurRadius(selected ? 28 : 0);
-    effect->setOffset(0, 0);
-    heroImage->setGraphicsEffect(effect);
+    if (selected) {
+        heroImage->setStyleSheet("QLabel { border: 3px solid #FFD700; border-radius: 8px; }");
+    } else {
+        heroImage->setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; }");
+    }
 }
 
+// ==================== MainWindow ====================
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , weiyan(nullptr)
-    , xusheng(nullptr)
-    , deck(nullptr)
-    , isWeiYanTurn(true)
-    , zhuangShiUsed(false)
-    , kuangGuTriggered(false)
-    , beiShuiAsked(false)
-    , selectedHandCard(nullptr)
-    , discardPileCount(0)
-{
+    : QMainWindow(parent), ui(new Ui::MainWindow), selectedHandCard(nullptr) {
     ui->setupUi(this);
-    imagePath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/";
     setWindowTitle("三国杀 - 势·魏延 VS 界·徐盛");
-    setMinimumSize(1200, 760);
-    resize(1280, 800);
+    setFixedSize(1280, 800);
+    
+    weiyan = new WeiYan();
+    xusheng = new XuSheng();
+    deck = new DeckManager();
+    
+    imagePath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/";
+    
+    isWeiYanTurn = true;
+    zhuangShiUsed = false;
+    beiShuiUsed = false;
+    discardPileCount = 0;
+    weiyanWineUsedThisTurn = false;
+    weiyanWineBuffActive = false;
+    xushengWineUsedThisTurn = false;
+    xushengWineBuffActive = false;
+    zhuangShiDiscardCount = 0;
+    zhuangShiHpLoss = 0;
+    discardPhaseCount = 0;
+    flowState = FlowState::START_MENU;
+    
     initUI();
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
     delete ui;
     delete weiyan;
     delete xusheng;
     delete deck;
 }
 
-void MainWindow::initUI()
-{
+void MainWindow::initUI() {
     QWidget* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
     QVBoxLayout* mainLayout = new QVBoxLayout(centralWidget);
@@ -150,49 +126,25 @@ void MainWindow::initUI()
     QString bgPath = imagePath + "牌局背景.jpg";
     QPalette palette;
     QPixmap bgImage(bgPath);
-    if (bgImage.isNull()) {
-        bgImage.load(imagePath + "战局背景.jpg");
-    }
-    if (bgImage.isNull()) {
-        palette.setColor(QPalette::Window, QColor(42, 35, 29));
-    } else {
-        palette.setBrush(QPalette::Window, bgImage.scaled(1400, 900, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-    }
+    if (bgImage.isNull()) bgImage.load(imagePath + "战局背景.jpg");
+    if (bgImage.isNull()) palette.setColor(QPalette::Window, QColor(42, 35, 29));
+    else palette.setBrush(QPalette::Window, bgImage.scaled(1280, 800, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     centralWidget->setPalette(palette);
     centralWidget->setAutoFillBackground(true);
 
     centralWidget->setStyleSheet(
-        "QPushButton {"
-        " background: rgba(52, 37, 25, 0.86);"
-        " color: #F4E1B6;"
-        " border: 1px solid rgba(196, 153, 95, 0.92);"
-        " border-radius: 8px;"
-        " font-weight: 700;"
-        " padding: 4px 10px;"
-        "}"
-        "QPushButton:hover {"
-        " background: rgba(78, 58, 40, 0.92);"
-        "}"
-        "QPushButton:pressed {"
-        " background: rgba(35, 25, 18, 0.96);"
-        "}"
-        "QPushButton:disabled {"
-        " color: rgba(230, 220, 200, 0.48);"
-        " border-color: rgba(160, 140, 118, 0.45);"
-        " background: rgba(22, 18, 16, 0.6);"
-        "}"
+        "QPushButton { background: rgba(52, 37, 25, 0.86); color: #F4E1B6; border: 1px solid rgba(196, 153, 95, 0.92); border-radius: 8px; font-weight: 700; padding: 4px 10px; }"
+        "QPushButton:hover { background: rgba(78, 58, 40, 0.92); }"
+        "QPushButton:pressed { background: rgba(35, 25, 18, 0.96); }"
+        "QPushButton:disabled { color: rgba(230, 220, 200, 0.48); border-color: rgba(160, 140, 118, 0.45); background: rgba(22, 18, 16, 0.6); }"
+        "QSpinBox { background: rgba(45, 35, 25, 0.9); color: #F4E1B6; border: 1px solid rgba(196, 153, 95, 0.92); border-radius: 6px; padding: 2px 4px; }"
     );
 
     QHBoxLayout* topLayout = new QHBoxLayout();
-    topLayout->setContentsMargins(0, 0, 0, 0);
-    topLayout->setSpacing(0);
-
-    heroXuSheng = new HeroCardWidget("界·徐盛", imagePath + "界徐盛.webp", 4);
-    heroXuSheng->setHp(4);
+    heroXuSheng = new HeroCardWidget("界·徐盛", imagePath + "界徐盛登场.png", 4);
     topLayout->addStretch(1);
     topLayout->addWidget(heroXuSheng, 0, Qt::AlignCenter);
     topLayout->addStretch(1);
-
     mainLayout->addLayout(topLayout);
 
     QHBoxLayout* middleLayout = new QHBoxLayout();
@@ -201,19 +153,15 @@ void MainWindow::initUI()
     QVBoxLayout* leftToolsLayout = new QVBoxLayout();
     leftToolsLayout->setSpacing(10);
     leftToolsLayout->setAlignment(Qt::AlignBottom);
-
     QPushButton* btnPaiXu = new QPushButton("牌序");
     btnPaiXu->setFixedSize(78, 38);
     leftToolsLayout->addWidget(btnPaiXu);
-
     QPushButton* btnPaiKu = new QPushButton("牌库");
     btnPaiKu->setFixedSize(78, 38);
     leftToolsLayout->addWidget(btnPaiKu);
-
     QPushButton* btnJiLu = new QPushButton("记录");
     btnJiLu->setFixedSize(78, 38);
     leftToolsLayout->addWidget(btnJiLu);
-
     middleLayout->addLayout(leftToolsLayout);
 
     QFrame* centerPanel = new QFrame();
@@ -236,107 +184,144 @@ void MainWindow::initUI()
     QHBoxLayout* tableCardsLayout = new QHBoxLayout();
     tableCardsLayout->setSpacing(20);
     tableCardsLayout->setAlignment(Qt::AlignCenter);
-
     tableCardLeft = new QLabel();
     tableCardLeft->setFixedSize(108, 154);
     tableCardLeft->setAlignment(Qt::AlignCenter);
     tableCardLeft->setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; background: rgba(8, 6, 5, 0.45); color: #EED9AD; }");
     tableCardLeft->setVisible(false);
     tableCardsLayout->addWidget(tableCardLeft);
-
     tableCardRight = new QLabel();
     tableCardRight->setFixedSize(108, 154);
     tableCardRight->setAlignment(Qt::AlignCenter);
     tableCardRight->setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; background: rgba(8, 6, 5, 0.45); color: #EED9AD; }");
     tableCardRight->setVisible(false);
     tableCardsLayout->addWidget(tableCardRight);
-
     discardPileLabel = new QLabel("弃牌堆：0");
     discardPileLabel->setStyleSheet("QLabel { color: #EED9AD; font-size: 14px; font-weight: bold; }");
     tableCardsLayout->addWidget(discardPileLabel);
     centerPanelLayout->addLayout(tableCardsLayout);
 
-    QHBoxLayout* actionButtons = new QHBoxLayout();
-    actionButtons->setSpacing(12);
-    actionButtons->setAlignment(Qt::AlignCenter);
+    zhuangShiPanel = new QWidget();
+    zhuangShiPanel->setVisible(false);
+    QVBoxLayout* zhuangShiVLayout = new QVBoxLayout(zhuangShiPanel);
+    zhuangShiVLayout->setContentsMargins(0, 0, 0, 0);
+    zhuangShiVLayout->setSpacing(10);
+    lblZhuangShiStep = new QLabel("【壮誓】请选择要弃置的牌");
+    lblZhuangShiStep->setStyleSheet("QLabel { color: #F2DEB7; font-size: 16px; font-weight: bold; text-align: center; }");
+    lblZhuangShiStep->setAlignment(Qt::AlignCenter);
+    zhuangShiVLayout->addWidget(lblZhuangShiStep);
 
-    btnConfirm = new QPushButton("确定");
-    btnConfirm->setFixedSize(104, 38);
-    btnConfirm->setEnabled(false);
-    connect(btnConfirm, &QPushButton::clicked, this, &MainWindow::resolveSelectedCardPlay);
-    actionButtons->addWidget(btnConfirm);
+    QHBoxLayout* zhuangShiRow1 = new QHBoxLayout();
+    zhuangShiRow1->setSpacing(10);
+    zhuangShiRow1->setAlignment(Qt::AlignCenter);
+    lblDiscard = new QLabel("弃牌数");
+    lblDiscard->setStyleSheet("QLabel { color: #F2DEB7; font-weight: bold; }");
+    lblDiscard->setVisible(false);
+    zhuangShiRow1->addWidget(lblDiscard);
+    spinZhuangShiDiscard = new QSpinBox();
+    spinZhuangShiDiscard->setRange(0, 5);
+    spinZhuangShiDiscard->setValue(0);
+    spinZhuangShiDiscard->setVisible(false);
+    spinZhuangShiDiscard->setFixedWidth(60);
+    zhuangShiRow1->addWidget(spinZhuangShiDiscard);
+    lblHpLoss = new QLabel("失血数");
+    lblHpLoss->setStyleSheet("QLabel { color: #F2DEB7; font-weight: bold; }");
+    lblHpLoss->setVisible(false);
+    zhuangShiRow1->addWidget(lblHpLoss);
+    spinZhuangShiHpLoss = new QSpinBox();
+    spinZhuangShiHpLoss->setRange(0, 5);
+    spinZhuangShiHpLoss->setValue(0);
+    spinZhuangShiHpLoss->setVisible(false);
+    spinZhuangShiHpLoss->setFixedWidth(60);
+    zhuangShiRow1->addWidget(spinZhuangShiHpLoss);
+    zhuangShiVLayout->addLayout(zhuangShiRow1);
 
-    btnCancel = new QPushButton("取消");
-    btnCancel->setFixedSize(104, 38);
-    btnCancel->setEnabled(false);
-    connect(btnCancel, &QPushButton::clicked, [this]() {
-        selectedHandCard = nullptr;
-        pendingCardName.clear();
-        refreshHandCards();
-        updateConfirmState();
-        appendLog("取消当前选牌");
-    });
-    actionButtons->addWidget(btnCancel);
-
-    centerPanelLayout->addLayout(actionButtons);
+    QHBoxLayout* zhuangShiButtons = new QHBoxLayout();
+    zhuangShiButtons->setSpacing(12);
+    zhuangShiButtons->setAlignment(Qt::AlignCenter);
+    btnZhuangShiConfirm = new QPushButton("确定");
+    btnZhuangShiConfirm->setFixedSize(100, 36);
+    connect(btnZhuangShiConfirm, &QPushButton::clicked, this, &MainWindow::onZhuangShiDiscardConfirm);
+    zhuangShiButtons->addWidget(btnZhuangShiConfirm);
+    btnZhuangShiCancel = new QPushButton("取消");
+    btnZhuangShiCancel->setFixedSize(100, 36);
+    connect(btnZhuangShiCancel, &QPushButton::clicked, this, &MainWindow::onZhuangShiCancel);
+    zhuangShiButtons->addWidget(btnZhuangShiCancel);
+    zhuangShiVLayout->addLayout(zhuangShiButtons);
+    centerPanelLayout->addWidget(zhuangShiPanel, 0, Qt::AlignCenter);
 
     QHBoxLayout* skillButtons = new QHBoxLayout();
     skillButtons->setSpacing(10);
     skillButtons->setAlignment(Qt::AlignCenter);
-
     btnStart = new QPushButton("开始游戏");
-    btnStart->setFixedSize(110, 40);
+    btnStart->setFixedSize(120, 40);
     connect(btnStart, &QPushButton::clicked, this, &MainWindow::onStartGame);
     skillButtons->addWidget(btnStart);
-
     btnZhuangShi = new QPushButton("壮誓");
     btnZhuangShi->setFixedSize(88, 40);
+    btnZhuangShi->setVisible(false);
     btnZhuangShi->setEnabled(false);
     connect(btnZhuangShi, &QPushButton::clicked, this, &MainWindow::onWeiYanZhuangShi);
     skillButtons->addWidget(btnZhuangShi);
-
-    btnSlash = new QPushButton("出杀");
-    btnSlash->setFixedSize(88, 40);
-    btnSlash->setEnabled(false);
-    connect(btnSlash, &QPushButton::clicked, this, &MainWindow::onWeiYanSlash);
-    skillButtons->addWidget(btnSlash);
-
     btnBeiShui = new QPushButton("背水");
     btnBeiShui->setFixedSize(88, 40);
+    btnBeiShui->setVisible(false);
     btnBeiShui->setEnabled(false);
     connect(btnBeiShui, &QPushButton::clicked, this, &MainWindow::onWeiYanBeiShui);
     skillButtons->addWidget(btnBeiShui);
-
-    btnXuShengSlash = new QPushButton("徐盛出杀");
-    btnXuShengSlash->setFixedSize(96, 40);
-    btnXuShengSlash->setEnabled(false);
-    connect(btnXuShengSlash, &QPushButton::clicked, this, &MainWindow::onXuShengSlash);
-    skillButtons->addWidget(btnXuShengSlash);
-
     btnEndTurn = new QPushButton("结束回合");
     btnEndTurn->setFixedSize(108, 40);
+    btnEndTurn->setVisible(false);
     btnEndTurn->setEnabled(false);
     connect(btnEndTurn, &QPushButton::clicked, this, &MainWindow::onEndTurn);
     skillButtons->addWidget(btnEndTurn);
-
     centerPanelLayout->addLayout(skillButtons);
+
+    QHBoxLayout* actionButtons = new QHBoxLayout();
+    actionButtons->setSpacing(12);
+    actionButtons->setAlignment(Qt::AlignCenter);
+    btnConfirm = new QPushButton("确定");
+    btnConfirm->setFixedSize(104, 38);
+    btnConfirm->setVisible(false);
+    btnConfirm->setEnabled(false);
+    connect(btnConfirm, &QPushButton::clicked, this, &MainWindow::resolveSelectedCardPlay);
+    actionButtons->addWidget(btnConfirm);
+    btnCancel = new QPushButton("取消");
+    btnCancel->setFixedSize(104, 38);
+    btnCancel->setVisible(false);
+    btnCancel->setEnabled(false);
+    connect(btnCancel, &QPushButton::clicked, [this]() {
+        selectedHandCard = nullptr;
+        pendingCardName.clear();
+        selectedDiscardIndices.clear();
+        refreshHandCards();
+        updateConfirmState();
+        appendLog("取消当前操作");
+    });
+    actionButtons->addWidget(btnCancel);
+    centerPanelLayout->addLayout(actionButtons);
 
     QHBoxLayout* kuangGuButtons = new QHBoxLayout();
     kuangGuButtons->setSpacing(10);
     kuangGuButtons->setAlignment(Qt::AlignCenter);
-
     btnKuangGuHeal = new QPushButton("回复1点体力");
     btnKuangGuHeal->setFixedSize(130, 38);
+    btnKuangGuHeal->setVisible(false);
     btnKuangGuHeal->setEnabled(false);
     connect(btnKuangGuHeal, &QPushButton::clicked, this, &MainWindow::onWeiYanKuangGuHeal);
     kuangGuButtons->addWidget(btnKuangGuHeal);
-
     btnKuangGuDraw = new QPushButton("摸一张牌");
     btnKuangGuDraw->setFixedSize(130, 38);
+    btnKuangGuDraw->setVisible(false);
     btnKuangGuDraw->setEnabled(false);
     connect(btnKuangGuDraw, &QPushButton::clicked, this, &MainWindow::onWeiYanKuangGuDraw);
     kuangGuButtons->addWidget(btnKuangGuDraw);
-
+    btnKuangGuSkip = new QPushButton("不发动");
+    btnKuangGuSkip->setFixedSize(130, 38);
+    btnKuangGuSkip->setVisible(false);
+    btnKuangGuSkip->setEnabled(false);
+    connect(btnKuangGuSkip, &QPushButton::clicked, this, &MainWindow::onWeiYanKuangGuSkip);
+    kuangGuButtons->addWidget(btnKuangGuSkip);
     centerPanelLayout->addLayout(kuangGuButtons);
 
     middleLayout->addWidget(centerPanel, 1);
@@ -347,28 +332,16 @@ void MainWindow::initUI()
     txtLog = new QTextEdit();
     txtLog->setReadOnly(true);
     txtLog->setMinimumSize(250, 250);
-    txtLog->setStyleSheet(
-        "QTextEdit {"
-        " background: rgba(9, 7, 6, 0.76);"
-        " color: #EFE3C5;"
-        " font-size: 13px;"
-        " border: 1px solid rgba(214, 176, 116, 0.72);"
-        " border-radius: 10px;"
-        " padding: 6px;"
-        "}"
-    );
+    txtLog->setStyleSheet("QTextEdit { background: rgba(9, 7, 6, 0.76); color: #EFE3C5; font-size: 13px; border: 1px solid rgba(214, 176, 116, 0.72); border-radius: 10px; padding: 6px; }");
     rightPanel->addWidget(txtLog);
-
     middleLayout->addLayout(rightPanel);
     mainLayout->addLayout(middleLayout, 1);
 
     QHBoxLayout* bottomLayout = new QHBoxLayout();
     bottomLayout->setSpacing(14);
-
-    heroWeiYan = new HeroCardWidget("势·魏延", imagePath + "4.webp", 5);
+    heroWeiYan = new HeroCardWidget("势·魏延", imagePath + "势魏延登场.png", 5);
     heroWeiYan->setHp(5);
     bottomLayout->addWidget(heroWeiYan, 0, Qt::AlignBottom);
-
     handCardsArea = new QWidget();
     handCardsArea->setMinimumHeight(190);
     handCardsArea->setStyleSheet("QWidget { background: rgba(8, 6, 5, 0.35); border: 1px solid rgba(214, 176, 116, 0.33); border-radius: 12px; }");
@@ -377,11 +350,9 @@ void MainWindow::initUI()
     handCardsLayout->setSpacing(10);
     handCardsLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     bottomLayout->addWidget(handCardsArea, 1);
-
-    heroSelf = new HeroCardWidget("势·魏延", imagePath + "4.webp", 5);
-    heroSelf->setHp(5);
+    heroSelf = new HeroCardWidget("界·徐盛", imagePath + "界徐盛登场.png", 4);
+    heroSelf->setHp(4);
     bottomLayout->addWidget(heroSelf, 0, Qt::AlignBottom);
-
     mainLayout->addLayout(bottomLayout);
 
     animationTimer = new QTimer(this);
@@ -390,464 +361,778 @@ void MainWindow::initUI()
     });
 }
 
-void MainWindow::showSkillAnimation(const QString& skillName, const QString& heroName) {
-    QPixmap animationPixmap(450, 150);
-    animationPixmap.fill(Qt::transparent);
-    
-    QPainter painter(&animationPixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    QPixmap heroImg;
-    if (heroName == "势·魏延") {
-        heroImg.load(imagePath + "4.webp");
-    } else {
-        heroImg.load(imagePath + "界徐盛.webp");
-    }
-
-    if (!heroImg.isNull()) {
-        painter.drawPixmap(30, 15, heroImg.scaled(100, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    }
-
-    painter.setFont(QFont("SimHei", 42, QFont::Bold));
-    QPen pen(QColor(255, 215, 0));
-    pen.setWidth(3);
-    painter.setPen(pen);
-    painter.drawText(150, 95, skillName);
-
-    painter.setFont(QFont("SimHei", 14));
-    painter.setPen(QColor(255, 255, 255));
-    painter.drawText(150, 130, heroName + "发动了技能");
-
-    skillAnimationLabel->setPixmap(animationPixmap);
-    skillAnimationLabel->setVisible(true);
-    animationTimer->start(2000);
-}
-
-void MainWindow::resetGame()
-{
-    delete weiyan;
-    delete xusheng;
-    delete deck;
-
-    weiyan = new WeiYan();
-    xusheng = new XuSheng();
-    deck = new DeckManager();
-    deck->shuffle();
-
-    isWeiYanTurn = true;
-    zhuangShiUsed = false;
-    kuangGuTriggered = false;
-    beiShuiAsked = false;
-    selectedHandCard = nullptr;
-    pendingCardName.clear();
-    discardPileCount = 0;
-    discardPileLabel->setText("弃牌堆：0");
-    clearTableCards();
-
-    for(int i=0; i<4; ++i) {
-        weiyan->drawCard(deck->draw());
-        xusheng->drawCard(deck->draw());
-    }
-
-    appendLog("=== 势·魏延 VS 界·徐盛 ===");
-    appendLog("双方各摸4张手牌");
-    updateUI();
-}
-
-void MainWindow::onStartGame()
-{
-    txtLog->clear();
-    resetGame();
-    btnStart->setEnabled(false);
-    startWeiYanTurn();
-}
-
-void MainWindow::startWeiYanTurn()
-{
-    isWeiYanTurn = true;
-    zhuangShiUsed = false;
-    kuangGuTriggered = false;
-    beiShuiAsked = false;
-    selectedHandCard = nullptr;
-    pendingCardName.clear();
-    weiyan->startTurn();
-    weiyan->drawCard(deck->draw());
-    weiyan->drawCard(deck->draw());
-    appendLog("势·魏延摸2张牌");
-
-    lblPhase->setText("出牌阶段 - 势·魏延");
-    lblPhase->setStyleSheet("font-size: 18px; font-weight: bold; color: #F44336; text-shadow: 2px 2px 4px #000;");
-
-    btnZhuangShi->setEnabled(!zhuangShiUsed && weiyan->currentState != SUCCESS);
-    btnSlash->setEnabled(false);
-    btnBeiShui->setEnabled(weiyan->currentState == SUCCESS && !beiShuiAsked && weiyan->handCards.size() >= 1);
-    btnXuShengSlash->setEnabled(false);
-    btnEndTurn->setEnabled(true);
-    btnConfirm->setEnabled(false);
-    btnCancel->setEnabled(false);
-
-    if (weiyan->currentState == SUCCESS) {
-        appendLog(">>> 可发动【背水】");
-    }
-}
-
-void MainWindow::startXuShengTurn()
-{
-    isWeiYanTurn = false;
-
-    xusheng->drawCard(deck->draw());
-    xusheng->drawCard(deck->draw());
-    appendLog("界·徐盛摸2张牌");
-
-    lblPhase->setText("出牌阶段 - 界·徐盛");
-    lblPhase->setStyleSheet("font-size: 18px; font-weight: bold; color: #2196F3; text-shadow: 2px 2px 4px #000;");
-
-    btnZhuangShi->setEnabled(false);
-    btnSlash->setEnabled(false);
-    btnBeiShui->setEnabled(false);
-    btnKuangGuHeal->setEnabled(false);
-    btnKuangGuDraw->setEnabled(false);
-    btnXuShengSlash->setEnabled(true);
-    btnEndTurn->setEnabled(true);
-    btnConfirm->setEnabled(false);
-    btnCancel->setEnabled(false);
-}
-
-void MainWindow::onWeiYanZhuangShi()
-{
-    if (zhuangShiUsed || weiyan->currentState == SUCCESS) return;
-
-    int discard = std::min(2, (int)weiyan->handCards.size());
-    int hpLoss = 1;
-
-    if (weiyan->hp <= hpLoss) {
-        appendLog("体力不足，无法发动壮誓");
-        return;
-    }
-
-    weiyan->activateZhuangShi(discard, hpLoss);
-    zhuangShiUsed = true;
-    appendLog("【壮誓】弃" + QString::number(discard) + "张，失" + QString::number(hpLoss) + "血");
-    showSkillAnimation("壮誓", "势·魏延");
-
-    btnZhuangShi->setEnabled(false);
-    updateUI();
-    checkGameOver();
-}
-
-void MainWindow::onWeiYanSlash()
-{
-    if (!removeCardFromHand(weiyan, "杀")) {
-        appendLog("没有【杀】，无法出杀");
-        return;
-    }
-    tableCardLeft->setPixmap(QPixmap(getCardImagePath("杀")).scaled(tableCardLeft->size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-    tableCardLeft->setVisible(true);
-
-    kuangGuTriggered = false;
-    bool xushengDodged = removeCardFromHand(xusheng, "闪");
-    if (xushengDodged) {
-        tableCardRight->setPixmap(QPixmap(getCardImagePath("闪")).scaled(tableCardRight->size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-        tableCardRight->setVisible(true);
-        appendLog("界·徐盛打出【闪】");
-    } else {
-        weiyan->useSlash(xusheng);
-    }
-
-    if (!xushengDodged && xusheng->hp <= 0) {
-        weiyan->checkKill(xusheng);
-        appendLog("【忠傲】使命成功！");
-    } else if (!xushengDodged && weiyan->currentState == START) {
-        appendLog(">>> 触发【狂骨】，请选择：");
-        kuangGuTriggered = true;
-        btnKuangGuHeal->setEnabled(true);
-        btnKuangGuDraw->setEnabled(true);
-        btnSlash->setEnabled(false);
-        btnEndTurn->setEnabled(false);
-    }
-
-    discardPileCount += xushengDodged ? 2 : 1;
-    discardPileLabel->setText("弃牌堆：" + QString::number(discardPileCount));
-    QTimer::singleShot(1000, this, &MainWindow::clearTableCards);
-
-    updateUI();
-    checkGameOver();
-}
-
-void MainWindow::onWeiYanKuangGuHeal()
-{
-    if (!kuangGuTriggered) return;
-
-    weiyan->chooseKuangGuHeal();
-    appendLog("【狂骨】选择回血");
-    kuangGuTriggered = false;
-    btnKuangGuHeal->setEnabled(false);
-    btnKuangGuDraw->setEnabled(false);
-    btnSlash->setEnabled(true);
-    btnEndTurn->setEnabled(true);
-    updateUI();
-}
-
-void MainWindow::onWeiYanKuangGuDraw()
-{
-    if (!kuangGuTriggered) return;
-
-    weiyan->chooseKuangGuDraw();
-    appendLog("【狂骨】选择摸牌");
-    kuangGuTriggered = false;
-    btnKuangGuHeal->setEnabled(false);
-    btnKuangGuDraw->setEnabled(false);
-    btnSlash->setEnabled(true);
-    btnEndTurn->setEnabled(true);
-    updateUI();
-}
-
-void MainWindow::onWeiYanBeiShui()
-{
-    if (weiyan->currentState != SUCCESS || beiShuiAsked || weiyan->handCards.size() < 1) return;
-
-    weiyan->activateBeiShui(true);
-    beiShuiAsked = true;
-    appendLog("【背水】发动");
-    btnBeiShui->setEnabled(false);
-    updateUI();
-}
-
-void MainWindow::onXuShengSlash()
-{
-    xusheng->useSlash(weiyan);
-    showSkillAnimation("破军", "界·徐盛");
-    updateUI();
-    checkGameOver();
-}
-
-void MainWindow::onEndTurn()
-{
-    if (isWeiYanTurn) {
-        weiyan->endTurn();
-
-        if (!zhuangShiUsed && weiyan->currentState != SUCCESS) {
-            appendLog("【困奋】失1血，摸2牌");
-        }
-
-        if (weiyan->currentState == SUCCESS) {
-            if (weiyan->slashUsedThisTurn < weiyan->zhuangShi_discarded) {
-                appendLog("【背水】摸1牌");
-            }
-            if (weiyan->slashUsedThisTurn < weiyan->zhuangShi_hpLost) {
-                appendLog("【背水】回1血");
-            }
-        }
-
-        if (weiyan->hp <= 0) {
-            checkGameOver();
-            return;
-        }
-
-        startXuShengTurn();
-    } else {
-        startWeiYanTurn();
-    }
-
-    updateUI();
-}
-
-void MainWindow::updateUI()
-{
-    heroXuSheng->setHp(xusheng->hp);
-    heroWeiYan->setHp(weiyan->hp);
-    heroSelf->setHp(weiyan->hp);
-
-    heroXuSheng->setSelected(!isWeiYanTurn);
-    heroWeiYan->setSelected(isWeiYanTurn);
-
-    refreshHandCards();
-    updateConfirmState();
-}
-
-void MainWindow::refreshHandCards()
-{
-    for (auto card : handCardWidgets) {
-        delete card;
-    }
+void MainWindow::refreshHandCards() {
+    qDeleteAll(handCardWidgets);
     handCardWidgets.clear();
+    QLayoutItem* item;
+    while ((item = handCardsLayout->takeAt(0)) != nullptr) {
+        delete item->widget();
+        delete item;
+    }
 
-    Player* currentPlayer = isWeiYanTurn ? (Player*)weiyan : (Player*)xusheng;
-    
-    for (size_t i = 0; i < currentPlayer->handCards.size(); ++i) {
-        QString cardName = currentPlayer->handCards[i]->name;
-        CardWidget* cardWidget = new CardWidget(cardName);
+    Player* player = currentPlayer();
+    if (!player) return;
+
+    for (size_t i = 0; i < player->handCards.size(); ++i) {
+        QString cardName = player->handCards[i]->getName();
+        CardWidget* cardWidget = new CardWidget(cardName, i);
         
         QString imgPath = getCardImagePath(cardName);
         QPixmap pixmap(imgPath);
         if (!pixmap.isNull()) {
-            cardWidget->setPixmap(pixmap.scaled(cardWidget->size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+            cardWidget->setPixmap(pixmap.scaled(100, 146, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         } else {
             cardWidget->setText(cardName);
-            cardWidget->setStyleSheet("QLabel { border: 2px solid rgba(176, 139, 85, 0.95); border-radius: 10px; background: rgba(22, 18, 15, 0.85); color: #F5E6C8; font-size: 16px; text-align: center; }");
-            cardWidget->setAlignment(Qt::AlignCenter);
         }
 
-        bool playable = isCardPlayable(cardName);
-        cardWidget->setEnabled(playable);
-        if (!playable) {
-            cardWidget->setStyleSheet("QLabel { border: 2px solid rgba(130, 120, 100, 0.45); border-radius: 10px; background: rgba(12, 10, 9, 0.7); color: rgba(220, 210, 190, 0.5); }");
+        bool isSelected = false;
+        if (flowState == FlowState::ZHUANGSHI_DISCARD || flowState == FlowState::DISCARD_PHASE) {
+            for (int idx : selectedDiscardIndices) {
+                if (idx == (int)i) {
+                    isSelected = true;
+                    cardWidget->selected = true;
+                    break;
+                }
+            }
         }
 
-        if (!pendingCardName.isEmpty() && pendingCardName == cardName && selectedHandCard == nullptr && playable) {
-            cardWidget->selected = true;
-            selectedHandCard = cardWidget;
-            cardWidget->setStyleSheet("QLabel { border: 3px solid #F2C66D; border-radius: 10px; background: rgba(22, 18, 15, 0.85); color: #FFF3D0; }");
+        if (selectedHandCard == cardWidget) {
+            cardWidget->setStyleSheet("QLabel { border: 3px solid #FFD700; border-radius: 8px; }");
+        } else if (isSelected) {
+            cardWidget->setStyleSheet("QLabel { border: 3px solid #FFA500; border-radius: 8px; }");
+        } else {
+            cardWidget->setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; }");
         }
-        
-        handCardsLayout->addWidget(cardWidget);
-        handCardWidgets.append(cardWidget);
+
         connect(cardWidget, &CardWidget::clicked, this, &MainWindow::onCardClicked);
+
+        handCardWidgets.append(cardWidget);
+        handCardsLayout->addWidget(cardWidget);
+    }
+}
+
+void MainWindow::onCardClicked(CardWidget* card) {
+    if (flowState == FlowState::ZHUANGSHI_DISCARD) {
+        auto it = std::find(selectedDiscardIndices.begin(), selectedDiscardIndices.end(), card->index);
+        if (it != selectedDiscardIndices.end()) {
+            selectedDiscardIndices.erase(it);
+        } else {
+            selectedDiscardIndices.push_back(card->index);
+        }
+        refreshHandCards();
+        updateConfirmState();
+    } else if (flowState == FlowState::DISCARD_PHASE) {
+        auto it = std::find(selectedDiscardIndices.begin(), selectedDiscardIndices.end(), card->index);
+        if (it != selectedDiscardIndices.end()) {
+            selectedDiscardIndices.erase(it);
+        } else if ((int)selectedDiscardIndices.size() < discardPhaseCount) {
+            selectedDiscardIndices.push_back(card->index);
+        }
+        refreshHandCards();
+        updateConfirmState();
+    } else {
+        if (selectedHandCard == card) {
+            selectedHandCard = nullptr;
+            pendingCardName.clear();
+        } else {
+            selectedHandCard = card;
+            pendingCardName = card->cardName;
+        }
+        refreshHandCards();
+        updateConfirmState();
     }
 }
 
 QString MainWindow::getCardImagePath(const QString& cardName) {
-    QString name = cardName;
-    if (name == "杀") return imagePath + "杀.jpg";
-    if (name == "闪") return imagePath + "闪.jpg";
-    if (name == "桃") return imagePath + "桃.jpg";
-    if (name == "酒") return imagePath + "酒.jpg";
-    if (name == "决斗") return imagePath + "决斗.jpg";
-    if (name == "南蛮入侵") return imagePath + "南蛮入侵.jpg";
-    if (name == "万箭齐发") return imagePath + "万箭齐发.jpg";
-    if (name == "顺手牵羊") return imagePath + "顺手牵羊.jpg";
-    if (name == "过河拆桥") return imagePath + "过河拆桥.jpg";
-    if (name == "诸葛连弩") return imagePath + "诸葛连弩.jpg";
-    if (name == "古锭刀") return imagePath + "古锭刀.jpg";
-    if (name == "麒麟弓") return imagePath + "麒麟弓.jpg";
-    if (name == "仁王盾") return imagePath + "仁王盾.jpg";
-    if (name == "白银狮子") return imagePath + "白银狮子.jpg";
-    if (name == "+1马") return imagePath + "加一马.jpg";
-    if (name == "-1马") return imagePath + "减一马.jpg";
-    return "";
-}
-
-void MainWindow::onCardClicked(CardWidget* card) {
-    if (!isCardPlayable(card->cardName)) {
-        card->selected = false;
-        pendingCardName.clear();
-        selectedHandCard = nullptr;
-        appendLog("当前阶段不可使用【" + card->cardName + "】");
-        updateConfirmState();
-        return;
-    }
-
-    for (auto* w : handCardWidgets) {
-        if (w != card) {
-            w->selected = false;
-            w->setGraphicsEffect(nullptr);
-            if (w->isEnabled()) {
-                w->setStyleSheet("QLabel { border: 2px solid rgba(176, 139, 85, 0.95); border-radius: 10px; background: rgba(22, 18, 15, 0.85); color: #F5E6C8; }");
-            }
-        }
-    }
-
-    if (card->selected) {
-        selectedHandCard = card;
-        pendingCardName = card->cardName;
-        appendLog("选择：【" + card->cardName + "】");
-    } else {
-        selectedHandCard = nullptr;
-        pendingCardName.clear();
-    }
-    updateConfirmState();
+    QString cardPath = imagePath + cardName + ".jpg";
+    QFile file(cardPath);
+    if (file.exists()) return cardPath;
+    
+    QString altPath = imagePath + cardName + ".png";
+    QFile altFile(altPath);
+    if (altFile.exists()) return altPath;
+    
+    return imagePath + "卡牌背面.jpg";
 }
 
 bool MainWindow::isCardPlayable(const QString& cardName) const {
-    if (!isWeiYanTurn || kuangGuTriggered) return false;
-    if (cardName == "闪") return false;
-    if (cardName == "桃") return weiyan && weiyan->hp < weiyan->maxHp;
-    if (cardName == "杀") return weiyan && weiyan->slashUsedThisTurn < weiyan->slashCountLimit;
+    if (!currentPlayer()) return false;
+
+    if (cardName == "桃") {
+        return currentPlayer()->hp < currentPlayer()->maxHp || currentPlayer()->hp <= 0;
+    }
+    if (cardName == "酒") {
+        if (currentPlayer()->hp <= 0) return true;
+        return isWeiYanTurn ? !weiyanWineUsedThisTurn : !xushengWineUsedThisTurn;
+    }
+    if (cardName == "杀") {
+        Player* p = isWeiYanTurn ? static_cast<Player*>(weiyan) : static_cast<Player*>(xusheng);
+        return p->slashUsedThisTurn < p->slashCountLimit;
+    }
+    // 其他卡牌都能出
     return true;
 }
 
 void MainWindow::updateConfirmState() {
-    bool canConfirm = isWeiYanTurn && selectedHandCard && !pendingCardName.isEmpty() && isCardPlayable(pendingCardName);
-    btnConfirm->setEnabled(canConfirm);
-    btnCancel->setEnabled(selectedHandCard != nullptr);
+    if (flowState == FlowState::ZHUANGSHI_DISCARD) {
+        btnConfirm->setVisible(true);
+        btnCancel->setVisible(true);
+        btnConfirm->setEnabled(!selectedDiscardIndices.empty());
+        btnCancel->setEnabled(true);
+    } else if (flowState == FlowState::DISCARD_PHASE) {
+        btnConfirm->setVisible(true);
+        btnCancel->setVisible(true);
+        btnConfirm->setEnabled((int)selectedDiscardIndices.size() == discardPhaseCount);
+        btnCancel->setEnabled(true);
+    } else {
+        bool canConfirm = selectedHandCard && !pendingCardName.isEmpty() && isCardPlayable(pendingCardName);
+        bool hasSelection = selectedHandCard != nullptr;
+        btnConfirm->setVisible(canConfirm);
+        btnCancel->setVisible(hasSelection);
+        btnConfirm->setEnabled(canConfirm);
+        btnCancel->setEnabled(hasSelection);
+    }
 }
 
 void MainWindow::resolveSelectedCardPlay() {
-    if (!selectedHandCard || pendingCardName.isEmpty()) return;
-    QString cardToPlay = pendingCardName;
-    pendingCardName.clear();
-    selectedHandCard = nullptr;
-
-    if (cardToPlay == "杀") {
-        onWeiYanSlash();
-    } else if (cardToPlay == "桃") {
-        if (removeCardFromHand(weiyan, "桃")) {
-            weiyan->heal(1);
-            tableCardLeft->setPixmap(QPixmap(getCardImagePath("桃")).scaled(tableCardLeft->size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-            tableCardLeft->setVisible(true);
-            appendLog("势·魏延使用【桃】回复1点体力");
-            discardPileCount += 1;
-            discardPileLabel->setText("弃牌堆：" + QString::number(discardPileCount));
-            QTimer::singleShot(800, this, &MainWindow::clearTableCards);
-        }
-    } else if (removeCardFromHand(weiyan, cardToPlay)) {
-        tableCardLeft->setPixmap(QPixmap(getCardImagePath(cardToPlay)).scaled(tableCardLeft->size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-        tableCardLeft->setVisible(true);
-        appendLog("势·魏延使用【" + cardToPlay + "】");
-        discardPileCount += 1;
-        discardPileLabel->setText("弃牌堆：" + QString::number(discardPileCount));
-        QTimer::singleShot(800, this, &MainWindow::clearTableCards);
+    if (flowState == FlowState::ZHUANGSHI_DISCARD) {
+        onZhuangShiDiscardConfirm();
+        return;
     }
 
+    if (flowState == FlowState::DISCARD_PHASE) {
+        onDiscardPhaseConfirm();
+        return;
+    }
+
+    if (!selectedHandCard || pendingCardName.isEmpty()) return;
+
+    Player* player = currentPlayer();
+    Player* enemy = enemyPlayer();
+    if (!player || !enemy) return;
+
+    std::shared_ptr<Card> selectedCard = nullptr;
+    for (auto it = player->handCards.begin(); it != player->handCards.end(); ++it) {
+        if ((*it)->name == pendingCardName) {
+            selectedCard = *it;
+            player->handCards.erase(it);
+            break;
+        }
+    }
+
+    if (!selectedCard) return;
+
+    if (pendingCardName == "杀") {
+        useSlashEffect(player, enemy, isWeiYanTurn);
+    } else if (pendingCardName == "桃") {
+        player->heal(1);
+        appendLog(QString("【%1】使用【桃】，回复1点体力").arg(player->name));
+    } else if (pendingCardName == "酒") {
+        if (player->hp <= 0) {
+            player->heal(1);
+            appendLog(QString("【%1】濒死使用【酒】，回复1点体力").arg(player->name));
+        } else {
+            if (isWeiYanTurn) {
+                weiyanWineUsedThisTurn = true;
+                weiyanWineBuffActive = true;
+            } else {
+                xushengWineUsedThisTurn = true;
+                xushengWineBuffActive = true;
+            }
+            appendLog(QString("【%1】使用【酒】，下一张杀伤害+1").arg(player->name));
+        }
+    } else if (pendingCardName == "决斗") {
+        useCardEffect(selectedCard, player, enemy);
+    } else if (pendingCardName == "南蛮入侵") {
+        useCardEffect(selectedCard, player, enemy);
+    } else if (pendingCardName == "万箭齐发") {
+        useCardEffect(selectedCard, player, enemy);
+    } else if (pendingCardName == "顺手牵羊") {
+        useCardEffect(selectedCard, player, enemy);
+    } else if (pendingCardName == "过河拆桥") {
+        useCardEffect(selectedCard, player, enemy);
+    } else if (pendingCardName == "诸葛连弩" || pendingCardName == "古锭刀" || pendingCardName == "麒麟弓") {
+        player->equipment.weapon = selectedCard;
+        appendLog(QString("【%1】装备了武器【%2】").arg(player->name).arg(pendingCardName));
+    } else if (pendingCardName == "仁王盾" || pendingCardName == "白银狮子") {
+        player->equipment.armor = selectedCard;
+        appendLog(QString("【%1】装备了防具【%2】").arg(player->name).arg(pendingCardName));
+    } else if (pendingCardName == "+1马") {
+        player->equipment.plusHorse = selectedCard;
+        appendLog(QString("【%1】装备了+1马").arg(player->name));
+    } else if (pendingCardName == "-1马") {
+        player->equipment.minusHorse = selectedCard;
+        appendLog(QString("【%1】装备了-1马").arg(player->name));
+    }
+
+    selectedHandCard = nullptr;
+    pendingCardName.clear();
+    refreshHandCards();
     updateUI();
-    checkGameOver();
 }
 
-bool MainWindow::removeCardFromHand(Player* player, const QString& cardName) {
-    if (!player) return false;
-    for (auto it = player->handCards.begin(); it != player->handCards.end(); ++it) {
-        if ((*it)->name == cardName) {
-            player->handCards.erase(it);
-            return true;
+void MainWindow::useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target) {
+    QString cardName = card->name;
+    appendLog(QString("【%1】使用【%2】").arg(source->name).arg(cardName));
+
+    if (cardName == "决斗") {
+        Player* attacker = source;
+        Player* defender = target;
+        while (true) {
+            bool hasSlash = false;
+            for (auto it = defender->handCards.begin(); it != defender->handCards.end(); ++it) {
+                if ((*it)->name == "杀") {
+                    defender->handCards.erase(it);
+                    hasSlash = true;
+                    appendLog(QString("【%1】打出【杀】").arg(defender->name));
+                    std::swap(attacker, defender);
+                    break;
+                }
+            }
+            if (!hasSlash) {
+                defender->takeDamage(1);
+                appendLog(QString("【%1】无法打出【杀】，受到1点伤害").arg(defender->name));
+                break;
+            }
+        }
+    } else if (cardName == "南蛮入侵") {
+        bool hasSlash = false;
+        for (auto it = target->handCards.begin(); it != target->handCards.end(); ++it) {
+            if ((*it)->name == "杀") {
+                target->handCards.erase(it);
+                hasSlash = true;
+                appendLog(QString("【%1】打出【杀】，抵消伤害").arg(target->name));
+                break;
+            }
+        }
+        if (!hasSlash) {
+            target->takeDamage(1);
+            appendLog(QString("【%1】无法打出【杀】，受到1点伤害").arg(target->name));
+        }
+    } else if (cardName == "万箭齐发") {
+        bool hasDodge = false;
+        for (auto it = target->handCards.begin(); it != target->handCards.end(); ++it) {
+            if ((*it)->name == "闪") {
+                target->handCards.erase(it);
+                hasDodge = true;
+                appendLog(QString("【%1】打出【闪】，抵消伤害").arg(target->name));
+                break;
+            }
+        }
+        if (!hasDodge) {
+            target->takeDamage(1);
+            appendLog(QString("【%1】无法打出【闪】，受到1点伤害").arg(target->name));
+        }
+    } else if (cardName == "顺手牵羊") {
+        if (source->getCurrentDistance() > 1) {
+            appendLog("【顺手牵羊】失败：距离超过1");
+        } else if (!target->handCards.empty()) {
+            source->handCards.push_back(target->handCards.back());
+            target->handCards.pop_back();
+            appendLog(QString("【顺手牵羊】成功：获得【%1】的手牌").arg(target->name));
+        }
+    } else if (cardName == "过河拆桥") {
+        if (!target->handCards.empty()) {
+            target->handCards.pop_back();
+            appendLog(QString("【过河拆桥】弃置【%1】一张手牌").arg(target->name));
+        }
+    } else if (cardName == "诸葛连弩" || cardName == "古锭刀" || cardName == "麒麟弓") {
+        source->equipment.weapon = card;
+        appendLog(QString("【%1】装备了武器【%2】").arg(source->name).arg(cardName));
+    } else if (cardName == "仁王盾" || cardName == "白银狮子") {
+        source->equipment.armor = card;
+        appendLog(QString("【%1】装备了防具【%2】").arg(source->name).arg(cardName));
+    } else if (cardName == "+1马") {
+        source->equipment.plusHorse = card;
+        appendLog(QString("【%1】装备了+1马").arg(source->name));
+    } else if (cardName == "-1马") {
+        source->equipment.minusHorse = card;
+        appendLog(QString("【%1】装备了-1马").arg(source->name));
+    } else {
+        card->execute(source, target);
+    }
+}
+
+void MainWindow::useSlashEffect(Player* source, Player* target, bool useWeiYanSkill) {
+    int damage = 1;
+    if (useWeiYanSkill && weiyanWineBuffActive) {
+        damage += 1;
+        weiyanWineBuffActive = false;
+        appendLog("【酒】生效：伤害+1");
+    } else if (!useWeiYanSkill && xushengWineBuffActive) {
+        damage += 1;
+        xushengWineBuffActive = false;
+        appendLog("【酒】生效：伤害+1");
+    }
+
+    appendLog(QString("【%1】使用【杀】").arg(source->name));
+
+    if (useWeiYanSkill) {
+        weiyan->useSlash(target, damage);
+    } else {
+        xusheng->useSlash(target, damage);
+    }
+
+    if (target->hp <= 0) {
+        appendLog(QString("【%1】进入濒死状态").arg(target->name));
+        handleNearDeath(target);
+    } else if (useWeiYanSkill && weiyan->kuangGuCanTrigger) {
+        appendLog(">>> 触发【狂骨】，请选择：");
+        btnKuangGuHeal->setVisible(true);
+        btnKuangGuDraw->setVisible(true);
+        btnKuangGuSkip->setVisible(true);
+        btnKuangGuHeal->setEnabled(true);
+        btnKuangGuDraw->setEnabled(true);
+        btnKuangGuSkip->setEnabled(true);
+    }
+}
+
+void MainWindow::enterFlowState(FlowState state) {
+    flowState = state;
+}
+
+Player* MainWindow::currentPlayer() const {
+    return isWeiYanTurn ? static_cast<Player*>(weiyan) : static_cast<Player*>(xusheng);
+}
+
+Player* MainWindow::enemyPlayer() const {
+    return isWeiYanTurn ? static_cast<Player*>(xusheng) : static_cast<Player*>(weiyan);
+}
+
+void MainWindow::showCardOnTable(QLabel* slot, const QString& cardName) {
+    QString imgPath = getCardImagePath(cardName);
+    QPixmap pixmap(imgPath);
+    if (!pixmap.isNull()) {
+        slot->setPixmap(pixmap.scaled(100, 146, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        slot->setText(cardName);
+    }
+    slot->setVisible(true);
+}
+
+void MainWindow::updateSkillPanelVisibility() {
+    bool isDiscardPhase = flowState == FlowState::DISCARD_PHASE;
+    bool isZhuangShiPhase = flowState == FlowState::ZHUANGSHI_STEP1 || flowState == FlowState::ZHUANGSHI_STEP2 || flowState == FlowState::ZHUANGSHI_DISCARD;
+
+    btnZhuangShi->setVisible(isWeiYanTurn && !zhuangShiUsed && weiyan->currentState != SUCCESS);
+    btnZhuangShi->setEnabled(isWeiYanTurn && !zhuangShiUsed && weiyan->currentState != SUCCESS && weiyan->handCards.size() > 0);
+    
+    btnBeiShui->setVisible(isWeiYanTurn && weiyan->currentState == SUCCESS && !isDiscardPhase && !isZhuangShiPhase);
+    btnBeiShui->setEnabled(isWeiYanTurn && weiyan->currentState == SUCCESS && !beiShuiUsed);
+    
+    btnEndTurn->setVisible(!isDiscardPhase && !isZhuangShiPhase);
+    btnEndTurn->setEnabled(!isDiscardPhase && !isZhuangShiPhase);
+}
+
+void MainWindow::startZhuangShiStep1() {
+    lblZhuangShiStep->setText("【壮誓】请选择要弃置的牌（点击选择，再次点击取消）");
+    lblDiscard->setVisible(false);
+    spinZhuangShiDiscard->setVisible(false);
+    lblHpLoss->setVisible(false);
+    spinZhuangShiHpLoss->setVisible(false);
+    selectedDiscardIndices.clear();
+    btnZhuangShiConfirm->disconnect();
+    connect(btnZhuangShiConfirm, &QPushButton::clicked, this, &MainWindow::onZhuangShiDiscardConfirm);
+    zhuangShiPanel->setVisible(true);
+    enterFlowState(FlowState::ZHUANGSHI_DISCARD);
+    appendLog(">>> 【壮誓】请选择要弃置的牌（至少选1张）");
+    refreshHandCards();
+}
+
+void MainWindow::startZhuangShiStep2() {
+    lblZhuangShiStep->setText("【壮誓】选择失去几点体力");
+    lblDiscard->setVisible(false);
+    spinZhuangShiDiscard->setVisible(false);
+    lblHpLoss->setVisible(true);
+    spinZhuangShiHpLoss->setVisible(true);
+    spinZhuangShiHpLoss->setRange(0, weiyan->hp);
+    spinZhuangShiHpLoss->setValue(0);
+    btnZhuangShiConfirm->disconnect();
+    connect(btnZhuangShiConfirm, &QPushButton::clicked, this, &MainWindow::onZhuangShiStep2Confirm);
+    enterFlowState(FlowState::ZHUANGSHI_STEP2);
+    appendLog(">>> 【壮誓】第2步：请选择失去几点体力");
+}
+
+void MainWindow::startZhuangShiDiscard() {
+    startZhuangShiStep1();
+}
+
+void MainWindow::onZhuangShiStep1Confirm() {
+}
+
+void MainWindow::onZhuangShiStep2Confirm() {
+    zhuangShiHpLoss = spinZhuangShiHpLoss->value();
+    zhuangShiUsed = true;
+    
+    if (zhuangShiHpLoss >= weiyan->hp) {
+        weiyan->currentState = FAILURE;
+        weiyan->hp -= zhuangShiHpLoss;
+        appendLog("【壮誓】扣血等于当前体力，使命失败！");
+        if (weiyan->hp <= 0) {
+            handleNearDeath(weiyan);
+        }
+    } else {
+        weiyan->currentState = START;
+        weiyan->zhuangShi_discarded = zhuangShiDiscardCount;
+        weiyan->zhuangShi_hpLost = zhuangShiHpLoss;
+        weiyan->hp -= zhuangShiHpLoss;
+        weiyan->slashCountLimit += zhuangShiDiscardCount;
+        appendLog(QString("【壮誓】弃置%1张牌，失去%2点体力，本回合杀次数+%3").arg(zhuangShiDiscardCount).arg(zhuangShiHpLoss).arg(zhuangShiDiscardCount));
+    }
+    
+    zhuangShiPanel->setVisible(false);
+    enterFlowState(FlowState::TURN_PLAY_SELECT);
+    updateSkillPanelVisibility();
+    refreshHandCards();
+    updateUI();
+}
+
+void MainWindow::onZhuangShiDiscardConfirm() {
+    if (selectedDiscardIndices.empty()) {
+        appendLog("请至少选择1张牌！");
+        return;
+    }
+    
+    zhuangShiDiscardCount = selectedDiscardIndices.size();
+    std::sort(selectedDiscardIndices.rbegin(), selectedDiscardIndices.rend());
+    for (int idx : selectedDiscardIndices) {
+        if (idx < (int)weiyan->handCards.size()) {
+            weiyan->handCards.erase(weiyan->handCards.begin() + idx);
+            discardPileCount++;
         }
     }
-    return false;
+    discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+    selectedDiscardIndices.clear();
+    
+    if (weiyan->handCards.empty()) {
+        weiyan->currentState = FAILURE;
+        zhuangShiUsed = true;
+        zhuangShiPanel->setVisible(false);
+        enterFlowState(FlowState::TURN_PLAY_SELECT);
+        updateSkillPanelVisibility();
+        refreshHandCards();
+        updateUI();
+        return;
+    }
+    
+    startZhuangShiStep2();
+}
+
+void MainWindow::onZhuangShiCancel() {
+    weiyan->currentState = FAILURE;
+    zhuangShiUsed = true;
+    zhuangShiPanel->setVisible(false);
+    selectedDiscardIndices.clear();
+    enterFlowState(FlowState::TURN_PLAY_SELECT);
+    appendLog("【壮誓】取消，使命失败！");
+    updateSkillPanelVisibility();
+    updateUI();
+}
+
+void MainWindow::onStartGame() {
+    resetGame();
+    
+    deck->shuffle();
+    for (int i = 0; i < 4; ++i) {
+        weiyan->drawCard(deck->draw());
+        xusheng->drawCard(deck->draw());
+    }
+    
+    isWeiYanTurn = true;
+    zhuangShiUsed = false;
+    beiShuiUsed = false;
+    weiyanWineUsedThisTurn = false;
+    weiyanWineBuffActive = false;
+    xushengWineUsedThisTurn = false;
+    xushengWineBuffActive = false;
+    discardPileCount = 0;
+    discardPileLabel->setText("弃牌堆：0");
+    
+    btnStart->setVisible(false);
+    startWeiYanTurn();
+}
+
+void MainWindow::resetGame() {
+    delete weiyan;
+    delete xusheng;
+    delete deck;
+    
+    weiyan = new WeiYan();
+    xusheng = new XuSheng();
+    deck = new DeckManager();
+    
+    heroWeiYan->setHp(5);
+    heroXuSheng->setHp(4);
+    heroSelf->setHp(4);
+    
+    flowState = FlowState::START_MENU;
+    isWeiYanTurn = true;
+    zhuangShiUsed = false;
+    beiShuiUsed = false;
+    selectedHandCard = nullptr;
+    pendingCardName.clear();
+    selectedDiscardIndices.clear();
+}
+
+void MainWindow::startWeiYanTurn() {
+    isWeiYanTurn = true;
+    zhuangShiUsed = false;
+    beiShuiUsed = false;
+    weiyan->slashUsedThisTurn = 0;
+    weiyanWineUsedThisTurn = false;
+    weiyanWineBuffActive = false;
+    
+    lblPhase->setText("出牌阶段 - 势·魏延");
+    lblPhase->setStyleSheet("font-size: 20px; font-weight: bold; color: #F44336; text-shadow: 2px 2px 4px #000;");
+    
+    weiyan->drawCard(deck->draw());
+    weiyan->drawCard(deck->draw());
+    appendLog("=== 势·魏延 回合 ===");
+    appendLog("势·魏延摸2张牌");
+    
+    if (weiyan->currentState != SUCCESS) {
+        startZhuangShiStep1();
+    } else {
+        enterFlowState(FlowState::TURN_PLAY_SELECT);
+    }
+    
+    refreshHandCards();
+    updateSkillPanelVisibility();
+    updateUI();
+}
+
+void MainWindow::startXuShengTurn() {
+    isWeiYanTurn = false;
+    xusheng->slashUsedThisTurn = 0;
+    xushengWineUsedThisTurn = false;
+    xushengWineBuffActive = false;
+    
+    lblPhase->setText("出牌阶段 - 界·徐盛");
+    lblPhase->setStyleSheet("font-size: 20px; font-weight: bold; color: #2196F3; text-shadow: 2px 2px 4px #000;");
+    
+    xusheng->drawCard(deck->draw());
+    xusheng->drawCard(deck->draw());
+    appendLog("=== 界·徐盛 回合 ===");
+    appendLog("界·徐盛摸2张牌");
+    
+    enterFlowState(FlowState::TURN_PLAY_SELECT);
+    refreshHandCards();
+    updateSkillPanelVisibility();
+    updateUI();
+}
+
+void MainWindow::checkGameOver() {
+    if (weiyan->hp <= 0) {
+        lblPhase->setText("游戏结束 - 界·徐盛 获胜！");
+        lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #2196F3; text-shadow: 2px 2px 4px #000;");
+        QMessageBox::information(this, "游戏结束", "界·徐盛 获胜！");
+        btnStart->setVisible(true);
+        btnZhuangShi->setVisible(false);
+        btnBeiShui->setVisible(false);
+        btnEndTurn->setVisible(false);
+    } else if (xusheng->hp <= 0) {
+        lblPhase->setText("游戏结束 - 势·魏延 获胜！");
+        lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #F44336; text-shadow: 2px 2px 4px #000;");
+        QMessageBox::information(this, "游戏结束", "势·魏延 获胜！");
+        btnStart->setVisible(true);
+        btnZhuangShi->setVisible(false);
+        btnBeiShui->setVisible(false);
+        btnEndTurn->setVisible(false);
+    }
+}
+
+void MainWindow::updateUI() {
+    heroWeiYan->setHp(weiyan->hp);
+    heroXuSheng->setHp(xusheng->hp);
+    heroSelf->setHp(isWeiYanTurn ? weiyan->hp : xusheng->hp);
+    txtLog->ensureCursorVisible();
+}
+
+void MainWindow::appendLog(const QString& text) {
+    txtLog->append(text);
+}
+
+void MainWindow::onWeiYanZhuangShi() {
+    startZhuangShiStep1();
+}
+
+void MainWindow::onWeiYanBeiShui() {
+    if (!weiyan || weiyan->currentState != SUCCESS) return;
+    
+    if (weiyan->handCards.empty()) {
+        appendLog("没有手牌可弃置！");
+        return;
+    }
+    
+    weiyan->handCards.pop_back();
+    weiyan->slashCountLimit++;
+    beiShuiUsed = true;
+    discardPileCount++;
+    discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+    
+    appendLog("【背水】弃1牌，本回合杀次数+1");
+    
+    refreshHandCards();
+    updateSkillPanelVisibility();
+    updateUI();
+}
+
+void MainWindow::onEndTurn() {
+    enterFlowState(FlowState::TURN_END);
+    if (isWeiYanTurn) {
+        weiyan->endTurn();
+        
+        if (weiyan->currentState == FAILURE || (!zhuangShiUsed && weiyan->currentState != SUCCESS)) {
+            appendLog("【困奋】触发：失1血，摸2牌");
+            weiyan->takeDamage(1);
+            auto card1 = deck->draw();
+            if (card1) weiyan->drawCard(card1);
+            auto card2 = deck->draw();
+            if (card2) weiyan->drawCard(card2);
+        }
+        
+        if (weiyan->currentState == SUCCESS) {
+            if (weiyan->slashUsedThisTurn < (int)weiyan->zhuangShi_discarded) {
+                appendLog("【背水】摸1牌");
+                auto card = deck->draw();
+                if (card) weiyan->drawCard(card);
+            }
+            if (weiyan->slashUsedThisTurn < weiyan->zhuangShi_hpLost) {
+                appendLog("【背水】回1血");
+                if (weiyan->hp < weiyan->maxHp) {
+                    weiyan->heal(1);
+                } else {
+                    auto card = deck->draw();
+                    if (card) weiyan->drawCard(card);
+                }
+            }
+        }
+        
+        if (weiyan->hp <= 0) {
+            checkGameOver();
+            return;
+        }
+        
+        startDiscardPhase(weiyan);
+    } else {
+        startDiscardPhase(xusheng);
+    }
+    updateUI();
+}
+
+void MainWindow::startDiscardPhase(Player* player) {
+    int excessCards = player->handCards.size() - player->hp;
+    if (excessCards <= 0) {
+        if (isWeiYanTurn) {
+            startXuShengTurn();
+        } else {
+            startWeiYanTurn();
+        }
+        return;
+    }
+    
+    discardPhaseCount = excessCards;
+    selectedDiscardIndices.clear();
+    
+    lblPhase->setText(QString("弃牌阶段 - %1").arg(player->name));
+    lblPhase->setStyleSheet("font-size: 18px; font-weight: bold; color: #FF9800; text-shadow: 2px 2px 4px #000;");
+    
+    btnZhuangShi->setVisible(false);
+    btnBeiShui->setVisible(false);
+    btnEndTurn->setVisible(false);
+    
+    enterFlowState(FlowState::DISCARD_PHASE);
+    appendLog(QString(">>> 弃牌阶段：请选择弃置%1张牌").arg(excessCards));
+    refreshHandCards();
+}
+
+void MainWindow::onDiscardPhaseConfirm() {
+    Player* player = isWeiYanTurn ? static_cast<Player*>(weiyan) : static_cast<Player*>(xusheng);
+    
+    if ((int)selectedDiscardIndices.size() != discardPhaseCount) {
+        appendLog(QString("请选择%1张牌！").arg(discardPhaseCount));
+        return;
+    }
+    
+    std::sort(selectedDiscardIndices.rbegin(), selectedDiscardIndices.rend());
+    for (int idx : selectedDiscardIndices) {
+        if (idx < (int)player->handCards.size()) {
+            player->handCards.erase(player->handCards.begin() + idx);
+            discardPileCount++;
+        }
+    }
+    discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+    
+    selectedDiscardIndices.clear();
+    btnConfirm->setVisible(false);
+    btnCancel->setVisible(false);
+    
+    if (isWeiYanTurn) {
+        startXuShengTurn();
+    } else {
+        startWeiYanTurn();
+    }
+}
+
+void MainWindow::handleNearDeath(Player* player) {
+    if (player->hp > 0) return;
+    
+    appendLog(QString("【%1】进入濒死状态！").arg(player->name));
+    
+    bool canSave = false;
+    for (auto& card : player->handCards) {
+        if (card->getName() == "桃" || card->getName() == "酒") {
+            canSave = true;
+            break;
+        }
+    }
+    
+    if (!canSave) {
+        appendLog(QString("【%1】无法自救！").arg(player->name));
+        checkGameOver();
+        return;
+    }
+    
+    appendLog(">>> 请使用【桃】或【酒】自救");
+    flowState = FlowState::NEAR_DEATH;
+    refreshHandCards();
+}
+
+void MainWindow::onWeiYanKuangGuHeal() {
+    if (!weiyan) return;
+    weiyan->heal(1);
+    appendLog("【狂骨】回复1点体力");
+    btnKuangGuHeal->setVisible(false);
+    btnKuangGuDraw->setVisible(false);
+    btnKuangGuSkip->setVisible(false);
+    updateUI();
+}
+
+void MainWindow::onWeiYanKuangGuDraw() {
+    if (!weiyan) return;
+    auto card = deck->draw();
+    if (card) weiyan->drawCard(card);
+    appendLog("【狂骨】摸1张牌");
+    btnKuangGuHeal->setVisible(false);
+    btnKuangGuDraw->setVisible(false);
+    btnKuangGuSkip->setVisible(false);
+    refreshHandCards();
+    updateUI();
+}
+
+void MainWindow::onWeiYanKuangGuSkip() {
+    appendLog("【狂骨】不发动");
+    btnKuangGuHeal->setVisible(false);
+    btnKuangGuDraw->setVisible(false);
+    btnKuangGuSkip->setVisible(false);
+}
+
+void MainWindow::showSkillAnimation(const QString& skillName, const QString& heroName) {
+    Q_UNUSED(skillName);
+    Q_UNUSED(heroName);
 }
 
 void MainWindow::clearTableCards() {
-    tableCardLeft->clear();
-    tableCardRight->clear();
     tableCardLeft->setVisible(false);
     tableCardRight->setVisible(false);
-}
-
-void MainWindow::appendLog(const QString& text)
-{
-    txtLog->append(text);
-    txtLog->verticalScrollBar()->setValue(txtLog->verticalScrollBar()->maximum());
-}
-
-void MainWindow::checkGameOver()
-{
-    if (weiyan->hp <= 0) {
-        lblPhase->setText("游戏结束 - 界·徐盛 获胜！");
-        lblPhase->setStyleSheet("font-size: 20px; font-weight: bold; color: #2196F3; text-shadow: 2px 2px 4px #000;");
-        QMessageBox::information(this, "游戏结束", "界·徐盛 获胜！");
-        btnStart->setEnabled(true);
-        btnZhuangShi->setEnabled(false);
-        btnSlash->setEnabled(false);
-        btnBeiShui->setEnabled(false);
-        btnXuShengSlash->setEnabled(false);
-        btnEndTurn->setEnabled(false);
-    } else if (xusheng->hp <= 0) {
-        lblPhase->setText("游戏结束 - 势·魏延 获胜！");
-        lblPhase->setStyleSheet("font-size: 20px; font-weight: bold; color: #F44336; text-shadow: 2px 2px 4px #000;");
-        QMessageBox::information(this, "游戏结束", "势·魏延 获胜！");
-        btnStart->setEnabled(true);
-        btnZhuangShi->setEnabled(false);
-        btnSlash->setEnabled(false);
-        btnBeiShui->setEnabled(false);
-        btnXuShengSlash->setEnabled(false);
-        btnEndTurn->setEnabled(false);
-    }
 }

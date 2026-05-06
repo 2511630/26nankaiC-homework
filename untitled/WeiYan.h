@@ -5,27 +5,27 @@
 #include "Card.h"
 #include <memory>
 
-enum MissionState { START, SUCCESS, FAILURE };
+enum State { START, SUCCESS, FAILURE };
 
 class WeiYan : public Player {
 public:
-    // 初始化：名字 势·魏延, 体力 5, 初始状态 START
-    WeiYan() : Player("势·魏延", 5), currentState(START) {}
+    WeiYan() : Player("势·魏延", 5), currentState(START), kuangGuCanTrigger(false) {}
 
-    // --- 状态变量 ---
-    MissionState currentState;
-    int zhuangShi_discarded = 0;   // 壮誓投入的弃牌数
-    int zhuangShi_hpLost = 0;      // 壮誓投入的失血量
-    int cardsUsedThisTurn = 0;     // 本回合实际用牌数
-    int slashUsedThisTurn = 0;     // 本回合使用【杀】次数
-    int slashCountLimit = 1;       // 本回合【杀】次数上限
+    State currentState;
+    int zhuangShi_discarded = 0;
+    int zhuangShi_hpLost = 0;
+    int cardsUsedThisTurn = 0;
+    int slashUsedThisTurn = 0;
+    int slashCountLimit = 1;
     bool usedZhuangShiThisTurn = false;
+    bool kuangGuCanTrigger = false;
 
-    // --- 核心技能函数 ---
     void activateZhuangShi(int discard, int hpLoss);
+    void discardSelectedCards(const std::vector<int>& indices);
     void useSlash(Player* target, int baseDamage = 1);
     void chooseKuangGuHeal();
     void chooseKuangGuDraw();
+    void skipKuangGu();
     bool activateBeiShui(bool shouldActivate);
     void checkKill(Player* target);
     void endTurn();

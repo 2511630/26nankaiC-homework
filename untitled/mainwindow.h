@@ -8,12 +8,12 @@
 #include <QTextEdit>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QGridLayout>
 #include <QTimer>
 #include <QScrollBar>
 #include <QMouseEvent>
 #include <QGraphicsDropShadowEffect>
-#include <QMessageBox>
+#include <QSpinBox>
+#include <vector>
 #include "Player.h"
 #include "WeiYan.h"
 #include "XuSheng.h"
@@ -25,11 +25,27 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+enum class FlowState {
+    START_MENU,
+    TURN_DRAW,
+    TURN_PLAY_SELECT,
+    TURN_PLAY_CONFIRM,
+    WAIT_RESPONSE,
+    RESOLVE,
+    TURN_END,
+    DISCARD_PHASE,
+    ZHUANGSHI_STEP1,
+    ZHUANGSHI_STEP2,
+    ZHUANGSHI_DISCARD,
+    NEAR_DEATH,
+};
+
 class CardWidget : public QLabel {
     Q_OBJECT
 public:
-    CardWidget(const QString& cardName, QWidget* parent = nullptr);
+    CardWidget(const QString& cardName, int index, QWidget* parent = nullptr);
     QString cardName;
+    int index;
     bool selected;
 signals:
     void clicked(CardWidget* card);
@@ -61,17 +77,26 @@ public:
 
 private slots:
     void onStartGame();
-    void onWeiYanSlash();
     void onWeiYanZhuangShi();
     void onWeiYanKuangGuHeal();
     void onWeiYanKuangGuDraw();
+    void onWeiYanKuangGuSkip();
     void onWeiYanBeiShui();
-    void onXuShengSlash();
     void onEndTurn();
     void updateUI();
     void appendLog(const QString& text);
     void onCardClicked(CardWidget* card);
     void showSkillAnimation(const QString& skillName, const QString& heroName);
+    void onZhuangShiStep1Confirm();
+    void onZhuangShiStep2Confirm();
+    void onZhuangShiDiscardConfirm();
+    void onZhuangShiCancel();
+    void clearTableCards();
+    void handleNearDeath(Player* player);
+    void startDiscardPhase(Player* player);
+    void onDiscardPhaseConfirm();
+    void useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target);
+    void useSlashEffect(Player* source, Player* target, bool useWeiYanSkill);
 
 private:
     Ui::MainWindow *ui;
@@ -81,17 +106,22 @@ private:
     DeckManager* deck;
     bool isWeiYanTurn;
     bool zhuangShiUsed;
-    bool kuangGuTriggered;
-    bool beiShuiAsked;
+    bool beiShuiUsed;
+    QLabel* selectedHandCard;
+    int discardPileCount;
+    bool weiyanWineUsedThisTurn;
+    bool xushengWineUsedThisTurn;
+    bool weiyanWineBuffActive;
+    bool xushengWineBuffActive;
+    FlowState flowState;
+    QString pendingCardName;
+    QString pendingResponseCardName;
 
     QString imagePath;
 
     QLabel* lblPhase;
     QTextEdit* txtLog;
     QLabel* skillAnimationLabel;
-    QLabel* tableCardLeft;
-    QLabel* tableCardRight;
-    QLabel* discardPileLabel;
     QTimer* animationTimer;
 
     HeroCardWidget* heroXuSheng;
@@ -102,20 +132,34 @@ private:
     QHBoxLayout* handCardsLayout;
     QList<CardWidget*> handCardWidgets;
 
+    QLabel* tableCardLeft;
+    QLabel* tableCardRight;
+    QLabel* discardPileLabel;
+
     QPushButton* btnStart;
     QPushButton* btnZhuangShi;
-    QPushButton* btnSlash;
     QPushButton* btnBeiShui;
-    QPushButton* btnXuShengSlash;
     QPushButton* btnEndTurn;
-    QPushButton* btnKuangGuHeal;
-    QPushButton* btnKuangGuDraw;
     QPushButton* btnConfirm;
     QPushButton* btnCancel;
 
-    CardWidget* selectedHandCard;
-    QString pendingCardName;
-    int discardPileCount;
+    QPushButton* btnKuangGuHeal;
+    QPushButton* btnKuangGuDraw;
+    QPushButton* btnKuangGuSkip;
+
+    QWidget* zhuangShiPanel;
+    QSpinBox* spinZhuangShiDiscard;
+    QSpinBox* spinZhuangShiHpLoss;
+    QPushButton* btnZhuangShiConfirm;
+    QPushButton* btnZhuangShiCancel;
+    QLabel* lblZhuangShiStep;
+    QLabel* lblDiscard;
+    QLabel* lblHpLoss;
+
+    int zhuangShiDiscardCount;
+    int zhuangShiHpLoss;
+    int discardPhaseCount;
+    std::vector<int> selectedDiscardIndices;
 
     void initUI();
     void resetGame();
@@ -127,8 +171,14 @@ private:
     bool isCardPlayable(const QString& cardName) const;
     void updateConfirmState();
     void resolveSelectedCardPlay();
-    bool removeCardFromHand(Player* player, const QString& cardName);
-    void clearTableCards();
+    void enterFlowState(FlowState state);
+    Player* currentPlayer() const;
+    Player* enemyPlayer() const;
+    void showCardOnTable(QLabel* slot, const QString& cardName);
+    void updateSkillPanelVisibility();
+    void startZhuangShiStep1();
+    void startZhuangShiStep2();
+    void startZhuangShiDiscard();
 };
 
 #endif // MAINWINDOW_H

@@ -1,10 +1,10 @@
 #include "XuSheng.h"
 #include <QDebug>
 
-void XuSheng::useSlash(Player* target) {
+void XuSheng::useSlash(Player* target, int baseDamage) {
     qDebug() << "界·徐盛对" << target->name << "使用【杀】！";
 
-    int damage = 1;
+    int damage = baseDamage;
 
     int myCards = handCards.size();
     int myEquips = 0;

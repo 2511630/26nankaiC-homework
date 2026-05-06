@@ -9,7 +9,7 @@ class XuSheng : public Player {
 public:
     XuSheng() : Player("界·徐盛", 4) {}
 
-    void useSlash(Player* target);
+    void useSlash(Player* target, int baseDamage = 1);
 };
 
 #endif
