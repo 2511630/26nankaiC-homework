@@ -89,6 +89,9 @@ private:
     QLabel* lblPhase;
     QTextEdit* txtLog;
     QLabel* skillAnimationLabel;
+    QLabel* tableCardLeft;
+    QLabel* tableCardRight;
+    QLabel* discardPileLabel;
     QTimer* animationTimer;
 
     HeroCardWidget* heroXuSheng;
@@ -110,6 +113,10 @@ private:
     QPushButton* btnConfirm;
     QPushButton* btnCancel;
 
+    CardWidget* selectedHandCard;
+    QString pendingCardName;
+    int discardPileCount;
+
     void initUI();
     void resetGame();
     void startWeiYanTurn();
@@ -117,6 +124,11 @@ private:
     void checkGameOver();
     void refreshHandCards();
     QString getCardImagePath(const QString& cardName);
+    bool isCardPlayable(const QString& cardName) const;
+    void updateConfirmState();
+    void resolveSelectedCardPlay();
+    bool removeCardFromHand(Player* player, const QString& cardName);
+    void clearTableCards();
 };
 
 #endif // MAINWINDOW_H
