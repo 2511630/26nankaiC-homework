@@ -25,6 +25,9 @@ public:
     int slashUsedThisTurn = 0;
     int slashCountLimit = 1;
 
+    Player* pojunTarget = nullptr;
+    int pojunKouZhiCount = 0;
+
     Player(QString n, int h) : name(n), hp(h), maxHp(h) {}
     virtual ~Player() {}
 

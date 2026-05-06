@@ -9,7 +9,7 @@ enum State { START, SUCCESS, FAILURE };
 
 class WeiYan : public Player {
 public:
-    WeiYan() : Player("势·魏延", 5), currentState(START), kuangGuCanTrigger(false) {}
+    WeiYan() : Player("势·魏延", 5), currentState(START), kuangGuCanTrigger(false), chengShiCanTrigger(false), zhuangShiFailed(false) {}
 
     State currentState;
     int zhuangShi_discarded = 0;
@@ -19,6 +19,9 @@ public:
     int slashCountLimit = 1;
     bool usedZhuangShiThisTurn = false;
     bool kuangGuCanTrigger = false;
+    bool chengShiCanTrigger = false;
+    std::shared_ptr<Card> chengShiDiscardedCard = nullptr;
+    bool zhuangShiFailed = false;
 
     void activateZhuangShi(int discard, int hpLoss);
     void discardSelectedCards(const std::vector<int>& indices);

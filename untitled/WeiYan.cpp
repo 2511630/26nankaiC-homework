@@ -57,10 +57,18 @@ void WeiYan::useSlash(Player* target, int baseDamage) {
     bool hpSat = (this->hp <= target->hp);
     bool handSat = (this->handCards.size() <= target->handCards.size());
 
-    if (hpSat) { damage += 1; qDebug() << "【饮战】体力满足 -> 伤害+1"; }
-    if (handSat) {
-        target->discardRandom(1);
-        qDebug() << "【饮战】手牌满足 -> 对方弃置1张";
+    chengShiCanTrigger = false;
+    kuangGuCanTrigger = false;
+    std::shared_ptr<Card> discardedCard = nullptr;
+
+    if (hpSat) {
+        damage += 1;
+        qDebug() << "【饮战】体力满足 -> 伤害+1";
+    }
+    if (handSat && target->handCards.size() > 0) {
+        discardedCard = target->handCards.back();
+        target->handCards.pop_back();
+        qDebug() << "【饮战】手牌满足 -> 弃置" << target->name << "一张牌";
     }
 
     target->takeDamage(damage);
@@ -74,13 +82,13 @@ void WeiYan::useSlash(Player* target, int baseDamage) {
     if (target->hp <= 0) {
         checkKill(target);
     } else if (currentState == START && damage > 0) {
-        bool afterHpSat = (this->hp <= target->hp);
-        bool afterHandSat = (this->handCards.size() <= target->handCards.size());
-        if (afterHpSat && afterHandSat) {
-            qDebug() << "【乘势】触发！回1血，摸1牌。";
-        } else {
+        if (hpSat && handSat && discardedCard) {
+            chengShiCanTrigger = true;
+            chengShiDiscardedCard = discardedCard;
+            qDebug() << "【乘势】触发！同时满足体力和手牌条件，可回1血并获得弃置的牌";
+        } else if (damage > 0) {
             kuangGuCanTrigger = true;
-            qDebug() << ">>> [系统提示]：触发【狂骨】，请玩家选择：1.回血 2.摸牌";
+            qDebug() << "【狂骨】触发！对距离1以内角色造成伤害，可回血或摸牌";
         }
     }
 }
@@ -132,15 +140,15 @@ void WeiYan::endTurn() {
             if (this->hp < this->maxHp) this->heal(1);
             qDebug() << "收益：【杀】次数 < 失血量 -> 回复1体力。";
         }
-    } else if (!usedZhuangShiThisTurn) {
-        this->hp -= 1;
-        qDebug() << "【困奋】触发：失1血，摸2牌。";
+    } else if (currentState == FAILURE) {
     }
     cardsUsedThisTurn = 0;
     slashUsedThisTurn = 0;
     slashCountLimit = 1;
     usedZhuangShiThisTurn = false;
     kuangGuCanTrigger = false;
+    chengShiCanTrigger = false;
+    chengShiDiscardedCard = nullptr;
 }
 
 void WeiYan::updateStatus() {
@@ -152,6 +160,7 @@ void WeiYan::startTurn() {
     slashUsedThisTurn = 0;
     slashCountLimit = 1;
     kuangGuCanTrigger = false;
+    chengShiCanTrigger = false;
 
     if (currentState == SUCCESS) {
         qDebug() << ">>> [系统提示]：回合开始，是否发动【背水】？1.是 2.否";

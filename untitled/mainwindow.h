@@ -18,6 +18,7 @@
 #include "WeiYan.h"
 #include "XuSheng.h"
 #include "DeckManager.h"
+#include "AIManager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -38,6 +39,8 @@ enum class FlowState {
     ZHUANGSHI_STEP2,
     ZHUANGSHI_DISCARD,
     NEAR_DEATH,
+    SELECT_TRICK_TARGET,
+    SELECT_POJUN_TARGET,
 };
 
 class CardWidget : public QLabel {
@@ -97,6 +100,14 @@ private slots:
     void onDiscardPhaseConfirm();
     void useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target);
     void useSlashEffect(Player* source, Player* target, bool useWeiYanSkill);
+    void onTargetCardClicked(CardWidget* card);
+    void showTargetCardSelection(Player* target, const QString& cardName);
+    void showPojunCardSelection(Player* target);
+    void onPojunCardClicked(CardWidget* card);
+    void onPojunConfirm();
+    void startAITurn();
+    void onAIDecisionReceived(const QString& decision);
+    QString getGameStateForAI() const;
 
 private:
     Ui::MainWindow *ui;
@@ -107,7 +118,7 @@ private:
     bool isWeiYanTurn;
     bool zhuangShiUsed;
     bool beiShuiUsed;
-    QLabel* selectedHandCard;
+    int selectedHandCardIndex;
     int discardPileCount;
     bool weiyanWineUsedThisTurn;
     bool xushengWineUsedThisTurn;
@@ -126,7 +137,21 @@ private:
 
     HeroCardWidget* heroXuSheng;
     HeroCardWidget* heroWeiYan;
-    HeroCardWidget* heroSelf;
+
+    QLabel* lblHandCardCount;
+    QLabel* lblWeiYanWeapon;
+    QLabel* lblWeiYanArmor;
+    QLabel* lblWeiYanHorse;
+
+    QLabel* lblXuShengHandCardCount;
+    QLabel* lblXuShengWeapon;
+    QLabel* lblXuShengArmor;
+    QLabel* lblXuShengHorse;
+
+    QWidget* targetSelectPanel;
+    QLabel* lblTargetSelect;
+    QList<CardWidget*> targetCardWidgets;
+    QString currentTrickCardName;
 
     QWidget* handCardsArea;
     QHBoxLayout* handCardsLayout;
@@ -161,6 +186,17 @@ private:
     int discardPhaseCount;
     std::vector<int> selectedDiscardIndices;
 
+    Player* pojunTarget;
+    int pojunKouZhiCount;
+    QLabel* lblPojunInfo;
+    QWidget* pojunSelectPanel;
+    QList<CardWidget*> pojunCardWidgets;
+    std::vector<int> pojunSelectedIndices;
+
+    AIManager* aiManager;
+    bool isAIThinking;
+    QString aiApiKey;
+
     void initUI();
     void resetGame();
     void startWeiYanTurn();
@@ -170,6 +206,7 @@ private:
     QString getCardImagePath(const QString& cardName);
     bool isCardPlayable(const QString& cardName) const;
     void updateConfirmState();
+    void updateEquipmentDisplay();
     void resolveSelectedCardPlay();
     void enterFlowState(FlowState state);
     Player* currentPlayer() const;

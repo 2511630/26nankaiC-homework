@@ -2,7 +2,13 @@
 #include <QDebug>
 
 void XuSheng::useSlash(Player* target, int baseDamage) {
-    qDebug() << "界·徐盛对" << target->name << "使用【杀】！";
+    if (slashUsedThisTurn >= slashCountLimit) {
+        qDebug() << "【杀】次数已用完！";
+        return;
+    }
+
+    slashUsedThisTurn++;
+    qDebug() << "界·徐盛对" << target->name << "使用【杀】！（剩余次数：" << slashCountLimit - slashUsedThisTurn << "）";
 
     int damage = baseDamage;
 
@@ -29,15 +35,8 @@ void XuSheng::useSlash(Player* target, int baseDamage) {
     qDebug() << target->name << "受到" << damage << "点伤害, 当前体力:" << target->hp;
 
     if (damage > 0 && target->isAlive()) {
-        int x = target->hp;
-        if (x > 0 && !target->handCards.empty()) {
-            int takeCount = std::min(x, (int)target->handCards.size());
-            for (int i = 0; i < takeCount; ++i) {
-                target->kouZhiCards.push_back(target->handCards.back());
-                target->handCards.pop_back();
-            }
-            qDebug() << "【破军】将" << takeCount << "张牌扣置于" << target->name << "的武将牌旁";
-            qDebug() << target->name << "扣置区：" << target->kouZhiCards.size() << "张，手牌：" << target->handCards.size() << "张";
-        }
+        pojunTarget = target;
+        pojunKouZhiCount = target->hp;
+        qDebug() << "【破军】触发：对方当前体力为" << target->hp << "，可扣置最多" << pojunKouZhiCount << "张牌";
     }
 }
