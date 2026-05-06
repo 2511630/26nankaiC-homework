@@ -12,7 +12,7 @@ public:
 class DodgeCard : public Card {
 public:
     DodgeCard() : Card(CardCategory::BASIC, "闪") {}
-    void execute(Player* source, Player* target) override {}
+    void execute(Player* source, Player* target) override { (void)source; (void)target; }
 };
 
 class PeachCard : public Card {

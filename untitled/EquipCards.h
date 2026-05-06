@@ -22,5 +22,10 @@ public:
     ArmorCard(QString n) : Card(CardCategory::EQUIPMENT, n) {}
     void execute(Player* source, Player* target) override;
 };
+class GuDingDaoCard : public WeaponCard {
+public:
+    GuDingDaoCard() : WeaponCard("古锭刀", false) {}
+    void execute(Player* source, Player* target) override;
+};
 
 #endif

@@ -35,10 +35,12 @@ void SlashCard::execute(Player* source, Player* target) {
 }
 
 void PeachCard::execute(Player* source, Player* target) {
+    (void)source;
     target->heal(1);
     qDebug() << target->name << "使用了【桃】，回复1点体力";
 }
 
 void WineCard::execute(Player* source, Player* target) {
+    (void)target;
     qDebug() << source->name << "使用了【酒】，增强下一次攻击";
 }
