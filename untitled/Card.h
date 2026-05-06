@@ -3,6 +3,7 @@
 
 #include <QString>
 #include <memory>
+#include <vector>
 
 enum class CardCategory { BASIC, TRICK, EQUIPMENT, OTHER };
 
@@ -16,6 +17,11 @@ public:
 
     // 核心：所有子类通过这个函数实现自己的效果
     virtual void execute(class Player* source, class Player* target) = 0;
+    virtual void executeAOE(class Player* source, const std::vector<class Player*>& targets) {
+        for (auto target : targets) {
+            execute(source, target);
+        }
+    }
 };
 
 #endif

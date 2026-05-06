@@ -13,6 +13,7 @@ SOURCES += \
     Player.cpp \
     TrickCards.cpp \
     WeiYan.cpp \
+    XuSheng.cpp \
     equipcards.cpp \
     main.cpp \
     mainwindow.cpp
@@ -26,6 +27,7 @@ HEADERS += \
     Player.h \
     TrickCards.h \
     WeiYan.h \
+    XuSheng.h \
     mainwindow.h
 
 FORMS += \

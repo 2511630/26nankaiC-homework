@@ -2,6 +2,10 @@
 #include <QDebug>
 
 void Player::takeDamage(int amount) {
+    if (hasBaiYinShiZi() && amount > 1) {
+        amount = 1;
+        qDebug() << name << "装备【白银狮子】，伤害减为1";
+    }
     hp -= amount;
     if (hp < 0) hp = 0;
     qDebug() << name << "受到" << amount << "点伤害, 当前体力:" << hp;
@@ -22,7 +26,8 @@ void Player::discardRandom(int count) {
 
 void Player::equipCard(std::shared_ptr<Card> card) {
     if (card->category == CardCategory::EQUIPMENT) {
-        if (card->name.contains("马")) equipment.horse = card;
+        if (card->name.contains("+1马")) equipment.plusHorse = card;
+        else if (card->name.contains("-1马")) equipment.minusHorse = card;
         else if (card->name.contains("盾") || card->name.contains("狮子")) equipment.armor = card;
         else equipment.weapon = card;
         qDebug() << name << "装备了【" << card->name << "】";
@@ -31,9 +36,46 @@ void Player::equipCard(std::shared_ptr<Card> card) {
 
 int Player::getCurrentDistance() const {
     int d = distance;
-    if (equipment.horse) {
-        if (equipment.horse->name.contains("+1")) d += 1;
-        else if (equipment.horse->name.contains("-1")) d -= 1;
-    }
+    if (equipment.plusHorse) d += 1;
+    if (equipment.minusHorse) d -= 1;
     return d;
+}
+
+bool Player::hasCrossbow() const {
+    return equipment.weapon && equipment.weapon->name == "诸葛连弩";
+}
+
+bool Player::hasGuDingDao() const {
+    return equipment.weapon && equipment.weapon->name == "古锭刀";
+}
+
+bool Player::hasQiLinGong() const {
+    return equipment.weapon && equipment.weapon->name == "麒麟弓";
+}
+
+bool Player::hasRenWangDun() const {
+    return equipment.armor && equipment.armor->name == "仁王盾";
+}
+
+bool Player::hasBaiYinShiZi() const {
+    return equipment.armor && equipment.armor->name == "白银狮子";
+}
+
+bool Player::hasSlash() const {
+    for (const auto& card : handCards) {
+        if (card->name == "杀" || card->name == "闪") {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Player::playSlash() {
+    for (auto it = handCards.begin(); it != handCards.end(); ++it) {
+        if ((*it)->name == "杀") {
+            handCards.erase(it);
+            return true;
+        }
+    }
+    return false;
 }

@@ -9,7 +9,8 @@
 struct EquipmentArea {
     std::shared_ptr<Card> weapon;
     std::shared_ptr<Card> armor;
-    std::shared_ptr<Card> horse;
+    std::shared_ptr<Card> plusHorse;
+    std::shared_ptr<Card> minusHorse;
 };
 
 class Player {
@@ -20,6 +21,7 @@ public:
     int distance = 1;
     std::vector<std::shared_ptr<Card>> handCards;
     EquipmentArea equipment;
+    std::vector<std::shared_ptr<Card>> kouZhiCards;
 
     Player(QString n, int h) : name(n), hp(h), maxHp(h) {}
     virtual ~Player() {}
@@ -31,6 +33,13 @@ public:
     bool isAlive() const { return hp > 0; }
     void equipCard(std::shared_ptr<Card> card);
     int getCurrentDistance() const;
+    bool hasSlash() const;
+    bool playSlash();
+    bool hasCrossbow() const;
+    bool hasGuDingDao() const;
+    bool hasQiLinGong() const;
+    bool hasRenWangDun() const;
+    bool hasBaiYinShiZi() const;
 };
 
 #endif
