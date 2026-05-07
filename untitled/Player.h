@@ -33,6 +33,7 @@ public:
 
     void takeDamage(int amount);
     void heal(int amount);
+    void loseHp(int amount);
     void drawCard(std::shared_ptr<Card> card);
     void discardRandom(int count);
     bool isAlive() const { return hp > 0; }

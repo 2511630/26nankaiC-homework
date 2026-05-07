@@ -16,6 +16,11 @@ void Player::heal(int amount) {
     if (hp > maxHp) hp = maxHp;
 }
 
+void Player::loseHp(int amount) {
+    hp -= amount;
+    if (hp < 0) hp = 0;
+}
+
 void Player::drawCard(std::shared_ptr<Card> card) {
     if(card) handCards.push_back(card);
 }
