@@ -13,18 +13,12 @@
 #include <QMouseEvent>
 #include <QGraphicsDropShadowEffect>
 #include <QSpinBox>
+#include <QLineEdit>
 #include <vector>
 #include "Player.h"
 #include "WeiYan.h"
 #include "XuSheng.h"
 #include "DeckManager.h"
-#include "AIManager.h"
-
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
-QT_END_NAMESPACE
 
 enum class FlowState {
     START_MENU,
@@ -35,18 +29,24 @@ enum class FlowState {
     RESOLVE,
     TURN_END,
     DISCARD_PHASE,
-    ZHUANGSHI_STEP1,
-    ZHUANGSHI_STEP2,
+    ZHUANGSHI_SELECT,
     ZHUANGSHI_DISCARD,
     NEAR_DEATH,
     SELECT_TRICK_TARGET,
     SELECT_POJUN_TARGET,
+    ZHUANGSHI_SELECT_CARDS,
+    ZHUANGSHI_SELECT_HP,
+    SELECT_YINGZHAN_CARD,
+    KUNFEN_END_PHASE,
+    POJUN_SELECT,
+    POJUN_DODGE_WAIT,
 };
 
 class CardWidget : public QLabel {
     Q_OBJECT
 public:
     CardWidget(const QString& cardName, int index, QWidget* parent = nullptr);
+    void setSelected(bool selected);
     QString cardName;
     int index;
     bool selected;
@@ -90,9 +90,7 @@ private slots:
     void appendLog(const QString& text);
     void onCardClicked(CardWidget* card);
     void showSkillAnimation(const QString& skillName, const QString& heroName);
-    void onZhuangShiStep1Confirm();
-    void onZhuangShiStep2Confirm();
-    void onZhuangShiDiscardConfirm();
+    void onZhuangShiConfirm();
     void onZhuangShiCancel();
     void clearTableCards();
     void handleNearDeath(Player* player);
@@ -105,13 +103,13 @@ private slots:
     void showPojunCardSelection(Player* target);
     void onPojunCardClicked(CardWidget* card);
     void onPojunConfirm();
-    void startAITurn();
-    void onAIDecisionReceived(const QString& decision);
-    QString getGameStateForAI() const;
+    void onKunFenEndPhaseConfirm();
+    void showPojunDodgeOption(Player* target);
+    void resolvePojunSelect();
+    void resolvePojunNoDodge(Player* target);
+    void resolvePojunDodge();
 
 private:
-    Ui::MainWindow *ui;
-
     WeiYan* weiyan;
     XuSheng* xusheng;
     DeckManager* deck;
@@ -161,6 +159,9 @@ private:
     QLabel* tableCardRight;
     QLabel* discardPileLabel;
 
+    QLabel* lblDeckCount;
+    QLabel* lblDeckCard;
+
     QPushButton* btnStart;
     QPushButton* btnZhuangShi;
     QPushButton* btnBeiShui;
@@ -173,18 +174,17 @@ private:
     QPushButton* btnKuangGuSkip;
 
     QWidget* zhuangShiPanel;
-    QSpinBox* spinZhuangShiDiscard;
-    QSpinBox* spinZhuangShiHpLoss;
+    QLineEdit* editZhuangShiHpLoss;
     QPushButton* btnZhuangShiConfirm;
     QPushButton* btnZhuangShiCancel;
     QLabel* lblZhuangShiStep;
-    QLabel* lblDiscard;
-    QLabel* lblHpLoss;
 
     int zhuangShiDiscardCount;
-    int zhuangShiHpLoss;
     int discardPhaseCount;
     std::vector<int> selectedDiscardIndices;
+    std::vector<int> zhuangShiSelectedCards;
+    int kunFenDiscardCount;
+    bool inKunFenNearDeath;
 
     Player* pojunTarget;
     int pojunKouZhiCount;
@@ -192,10 +192,9 @@ private:
     QWidget* pojunSelectPanel;
     QList<CardWidget*> pojunCardWidgets;
     std::vector<int> pojunSelectedIndices;
-
-    AIManager* aiManager;
-    bool isAIThinking;
-    QString aiApiKey;
+    
+    Player* yingZhanTarget;
+    int yingZhanSelectedIndex;
 
     void initUI();
     void resetGame();
@@ -207,15 +206,16 @@ private:
     bool isCardPlayable(const QString& cardName) const;
     void updateConfirmState();
     void updateEquipmentDisplay();
+    void updateDeckDisplay();
     void resolveSelectedCardPlay();
     void enterFlowState(FlowState state);
     Player* currentPlayer() const;
     Player* enemyPlayer() const;
     void showCardOnTable(QLabel* slot, const QString& cardName);
     void updateSkillPanelVisibility();
-    void startZhuangShiStep1();
-    void startZhuangShiStep2();
-    void startZhuangShiDiscard();
+    void triggerKuangGu(WeiYan* wy, Player* target, int damage);
+    void showYingZhanCardSelection(Player* target);
+    void onYingZhanCardSelected();
 };
 
 #endif // MAINWINDOW_H

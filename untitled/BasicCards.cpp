@@ -42,5 +42,11 @@ void PeachCard::execute(Player* source, Player* target) {
 
 void WineCard::execute(Player* source, Player* target) {
     (void)target;
-    qDebug() << source->name << "使用了【酒】，增强下一次攻击";
+    if (source->hp <= 0) {
+        // 濒死时使用酒回复体力
+        source->heal(1);
+        qDebug() << source->name << "在濒死状态使用【酒】，回复1点体力";
+    } else {
+        qDebug() << source->name << "使用了【酒】，增强下一次攻击";
+    }
 }

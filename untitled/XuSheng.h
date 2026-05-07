@@ -7,9 +7,10 @@
 
 class XuSheng : public Player {
 public:
-    XuSheng() : Player("界·徐盛", 4) {}
+    XuSheng() : Player("界·徐盛", 4), pojunExtraDamage(false) {}
 
     void useSlash(Player* target, int baseDamage = 1);
+    bool pojunExtraDamage;
 };
 
 #endif

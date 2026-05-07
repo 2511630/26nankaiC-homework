@@ -13,6 +13,7 @@ DeckManager::DeckManager() {
     deck.push_back(std::make_shared<HorseCard>("加一马", 1));
     deck.push_back(std::make_shared<HorseCard>("减一马", -1));
     deck.push_back(std::make_shared<WeaponCard>("诸葛连弩", true));
+    deck.push_back(std::make_shared<WeaponCard>("古锭刀", false));
     for(int i=0; i<2; ++i) deck.push_back(std::make_shared<WeaponCard>("麒麟弓", false));
     deck.push_back(std::make_shared<ArmorCard>("仁王盾"));
     deck.push_back(std::make_shared<ArmorCard>("白银狮子"));
