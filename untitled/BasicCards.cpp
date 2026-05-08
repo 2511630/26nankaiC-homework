@@ -19,13 +19,13 @@ void SlashCard::execute(Player* source, Player* target) {
 
     WeiYan* wy = dynamic_cast<WeiYan*>(source);
     if (wy) {
-        bool yingZhanJiaShang = false;
-        bool chengShiTriggered = false;
-        wy->useSlash(target, damage, yingZhanJiaShang, chengShiTriggered);
+        // 这里我们暂时不用 BasicCards.cpp 里的逻辑，因为实际是在 mainwindow.cpp 里处理
+        qDebug() << source->name << "使用【杀】";
     } else {
         XuSheng* xs = dynamic_cast<XuSheng*>(source);
         if (xs) {
-            xs->useSlash(target);
+            // 同样，实际是在 mainwindow.cpp 里处理
+            qDebug() << source->name << "使用【杀】";
         } else {
             target->takeDamage(damage);
             if (source->hasQiLinGong() && target->equipment.plusHorse) {

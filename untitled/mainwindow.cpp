@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "WeiYan.h"
 #include "XuSheng.h"
 #include "DeckManager.h"
@@ -104,12 +103,22 @@ MainWindow::MainWindow(QWidget *parent)
 
     imagePath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/";
     audioPath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/音频/";
+    animationPath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/动画/";
 
     // 初始化音频播放器
     mediaPlayer = new QMediaPlayer(this);
     audioOutput = new QAudioOutput(this);
     mediaPlayer->setAudioOutput(audioOutput);
     audioOutput->setVolume(1.0); // 音量100%
+
+    // 初始化动画相关
+    animationTimer = new QTimer(this);
+    animationTimer->setSingleShot(true);
+    connect(animationTimer, &QTimer::timeout, this, [this]() {
+        if (skillAnimationLabel) skillAnimationLabel->setVisible(false);
+        if (skillAnimationMovie) skillAnimationMovie->stop();
+    });
+    skillAnimationMovie = nullptr;
 
     isWeiYanTurn = true;
     zhuangShiUsed = false;
@@ -215,7 +224,7 @@ void MainWindow::initUI() {
     centerPanelLayout->addWidget(lblPhase);
 
     skillAnimationLabel = new QLabel();
-    skillAnimationLabel->setMinimumSize(560, 180);
+    skillAnimationLabel->setMinimumSize(560, 300);
     skillAnimationLabel->setAlignment(Qt::AlignCenter);
     skillAnimationLabel->setVisible(false);
     centerPanelLayout->addWidget(skillAnimationLabel, 0, Qt::AlignCenter);
@@ -1439,8 +1448,13 @@ void MainWindow::resolvePojunNoDodge(Player* target) {
     if (target->equipment.minusHorse) targetEquips++;
 
     int damage = 1;
+    if (xushengWineBuffActive) {
+        damage += 1;
+        xushengWineBuffActive = false;
+        appendLog("【酒】生效！伤害+1");
+    }
     if (targetCards <= myCards && targetEquips <= myEquips) {
-        damage = 2;
+        damage += 1;
         appendLog(QString("【破军】徐盛手牌数(%1)%2%3张，装备数(%4)%5%6件")
                       .arg(myCards).arg(myCards >= targetCards ? "≥" : "<").arg(targetCards)
                       .arg(myEquips).arg(myEquips >= targetEquips ? "≥" : "<").arg(targetEquips));
@@ -1474,6 +1488,7 @@ void MainWindow::resolvePojunNoDodge(Player* target) {
 void MainWindow::resolvePojunDodge() {
     if (!xusheng->pojunTarget) return;
     Player* target = xusheng->pojunTarget;
+    (void)target;
 
     appendLog("【破军】扣置的牌保留到回合结束");
 
@@ -1537,6 +1552,7 @@ void MainWindow::onZhuangShiConfirm() {
         // 使命失败
         appendLog("【壮誓】既不弃牌也不掉血，使命失败！失去壮誓，获得困奋");
         playAudio("势魏延使命失败进入困奋.mp3");
+        playSkillAnimation("困奋");
         weiyan->skipZhuangShi();
         zhuangShiUsed = true;
         zhuangShiPanel->setVisible(false);
@@ -1549,6 +1565,7 @@ void MainWindow::onZhuangShiConfirm() {
     }
 
     playAudio("势魏延壮誓.mp3"); // 壮誓音效
+    playSkillAnimation("壮誓");
 
     zhuangShiUsed = true;
     zhuangShiPanel->setVisible(false);
@@ -1578,6 +1595,7 @@ void MainWindow::onZhuangShiConfirm() {
             weiyan->skipZhuangShi();
             appendLog("【壮誓】失去全部体力，使命失败！失去壮誓，获得困奋");
             playAudio("势魏延使命失败进入困奋.mp3");
+            playSkillAnimation("困奋");
             handleNearDeath(weiyan);
         } else {
             weiyan->zhuangShiHpLost = hpLossCount;
@@ -1611,6 +1629,7 @@ void MainWindow::onZhuangShiCancel() {
     enterFlowState(FlowState::TURN_PLAY_SELECT);
     appendLog("【壮誓】取消，使命失败！失去壮誓，获得困奋");
     playAudio("势魏延使命失败进入困奋.mp3");
+    playSkillAnimation("困奋");
     updateSkillPanelVisibility();
     updateConfirmState();
     refreshHandCards();
@@ -1741,29 +1760,35 @@ void MainWindow::startXuShengTurn() {
 
 void MainWindow::checkGameOver() {
     if (weiyan->hp <= 0) {
-        playAudio("势魏延输了.mp3");
-        lblPhase->setText("游戏结束 - 界·徐盛 获胜！");
-        lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #2196F3;");
-        QMessageBox::information(this, "游戏结束", "界·徐盛 获胜！");
-        btnStart->setVisible(true);
-        btnZhuangShi->setVisible(false);
-        btnBeiShui->setVisible(false);
-        btnEndTurn->setVisible(false);
-        btnKuangGuHeal->setVisible(false);
-        btnKuangGuDraw->setVisible(false);
-        btnKuangGuSkip->setVisible(false);
+        playAudio("你跟马哥斗.mp3");
+        QTimer::singleShot(2000, this, [this]() {
+            playAudio("势魏延输了.mp3");
+            lblPhase->setText("游戏结束 - 界·徐盛 获胜！");
+            lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #2196F3;");
+            QMessageBox::information(this, "游戏结束", "界·徐盛 获胜！");
+            btnStart->setVisible(true);
+            btnZhuangShi->setVisible(false);
+            btnBeiShui->setVisible(false);
+            btnEndTurn->setVisible(false);
+            btnKuangGuHeal->setVisible(false);
+            btnKuangGuDraw->setVisible(false);
+            btnKuangGuSkip->setVisible(false);
+        });
     } else if (xusheng->hp <= 0) {
-        playAudio("势魏延赢了.mp3");
-        lblPhase->setText("游戏结束 - 势·魏延 获胜！");
-        lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #F44336;");
-        QMessageBox::information(this, "游戏结束", "势·魏延 获胜！");
-        btnStart->setVisible(true);
-        btnZhuangShi->setVisible(false);
-        btnBeiShui->setVisible(false);
-        btnEndTurn->setVisible(false);
-        btnKuangGuHeal->setVisible(false);
-        btnKuangGuDraw->setVisible(false);
-        btnKuangGuSkip->setVisible(false);
+        playAudio("你跟马哥斗.mp3");
+        QTimer::singleShot(2000, this, [this]() {
+            playAudio("势魏延赢了.mp3");
+            lblPhase->setText("游戏结束 - 势·魏延 获胜！");
+            lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #F44336;");
+            QMessageBox::information(this, "游戏结束", "势·魏延 获胜！");
+            btnStart->setVisible(true);
+            btnZhuangShi->setVisible(false);
+            btnBeiShui->setVisible(false);
+            btnEndTurn->setVisible(false);
+            btnKuangGuHeal->setVisible(false);
+            btnKuangGuDraw->setVisible(false);
+            btnKuangGuSkip->setVisible(false);
+        });
     }
 }
 
@@ -2057,6 +2082,7 @@ void MainWindow::handleNearDeath(Player* player) {
         weiyan->skipZhuangShi();
         appendLog("【忠傲】进入濒死，使命失败！失去壮誓，获得困奋");
         playAudio("势魏延使命失败进入困奋.mp3");
+        playSkillAnimation("困奋");
     }
 
     bool canSave = false;
@@ -2125,11 +2151,6 @@ void MainWindow::onWeiYanKuangGuSkip() {
     btnKuangGuHeal->setVisible(false);
     btnKuangGuDraw->setVisible(false);
     btnKuangGuSkip->setVisible(false);
-}
-
-void MainWindow::showSkillAnimation(const QString& skillName, const QString& heroName) {
-    Q_UNUSED(skillName);
-    Q_UNUSED(heroName);
 }
 
 void MainWindow::showTargetCardSelection(Player* target, const QString& cardName) {
@@ -2818,5 +2839,44 @@ void MainWindow::playAudio(const QString& audioName) {
     QString fullPath = audioPath + audioName;
     mediaPlayer->setSource(QUrl::fromLocalFile(fullPath));
     mediaPlayer->play();
+}
+
+void MainWindow::playSkillAnimation(const QString& skillName) {
+    // 先停止之前的动画
+    animationTimer->stop();
+    if (skillAnimationMovie) {
+        skillAnimationMovie->stop();
+        disconnect(skillAnimationMovie, &QMovie::finished, nullptr, nullptr);
+        delete skillAnimationMovie;
+        skillAnimationMovie = nullptr;
+    }
+
+    QString gifName;
+    if (skillName == "壮誓") {
+        gifName = "壮誓.gif";
+    } else if (skillName == "困奋") {
+        gifName = "困奋.gif";
+    } else {
+        return; // 未知技能不播放
+    }
+
+    QString fullPath = animationPath + gifName;
+    skillAnimationMovie = new QMovie(fullPath);
+    if (!skillAnimationMovie->isValid()) {
+        delete skillAnimationMovie;
+        skillAnimationMovie = nullptr;
+        return;
+    }
+
+    skillAnimationLabel->setMovie(skillAnimationMovie);
+    skillAnimationLabel->setVisible(true);
+
+    // 自动调整大小
+    skillAnimationMovie->setScaledSize(skillAnimationLabel->size());
+
+    skillAnimationMovie->start();
+
+    // 3秒后停止并隐藏
+    animationTimer->start(2000);
 }
 

@@ -16,6 +16,7 @@
 #include <QLineEdit>
 #include <QMediaPlayer>
 #include <QAudioOutput>
+#include <QMovie>
 #include <vector>
 #include "Player.h"
 #include "WeiYan.h"
@@ -91,7 +92,7 @@ private slots:
     void updateUI();
     void appendLog(const QString& text);
     void onCardClicked(CardWidget* card);
-    void showSkillAnimation(const QString& skillName, const QString& heroName);
+    void playSkillAnimation(const QString& skillName);
     void onZhuangShiConfirm();
     void onZhuangShiCancel();
     void clearTableCards();
@@ -130,6 +131,7 @@ private:
 
     QString imagePath;
     QString audioPath;
+    QString animationPath;
 
     QMediaPlayer* mediaPlayer;
     QAudioOutput* audioOutput;
@@ -138,6 +140,7 @@ private:
     QLabel* lblPhase;
     QTextEdit* txtLog;
     QLabel* skillAnimationLabel;
+    QMovie* skillAnimationMovie;
     QTimer* animationTimer;
 
     HeroCardWidget* heroXuSheng;
