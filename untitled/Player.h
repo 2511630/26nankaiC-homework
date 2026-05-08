@@ -39,6 +39,7 @@ public:
     bool isAlive() const { return hp > 0; }
     void equipCard(std::shared_ptr<Card> card);
     int getCurrentDistance() const;
+    int getCurrentDistanceTo(Player* target) const;
     bool hasSlash() const;
     bool playSlash();
     bool hasCrossbow() const;
@@ -46,6 +47,7 @@ public:
     bool hasQiLinGong() const;
     bool hasRenWangDun() const;
     bool hasBaiYinShiZi() const;
+    int getAttackRange() const;
 };
 
 #endif

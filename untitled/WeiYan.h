@@ -14,6 +14,7 @@ public:
         zhuangShiUsedThisTurn(false), cardsUsedThisTurn(0),
         zhuangShiNoLimitRemaining(0), zhuangShiNoLimitUsed(0),
         slashUsedThisTurn(0), slashCountLimit(1),
+        wineBuffCount(0),
         chengShiCanTrigger(false), chengShiDiscardedCard(nullptr) {}
 
     // 使命状态
@@ -30,6 +31,8 @@ public:
     int slashUsedThisTurn;
     int slashCountLimit;
     
+    int wineBuffCount; // 酒的buff层数
+    
     // 乘势状态
     bool chengShiCanTrigger;
     std::shared_ptr<Card> chengShiDiscardedCard;
@@ -40,8 +43,8 @@ public:
     void skipZhuangShi();
     // 造成任意伤害后触发狂骨
     void onDamageDealt(Player* target, int damage);
-    // 使用杀时触发饮战（加伤），返回是否需要选择弃置的牌
-    bool useSlash(Player* target, int baseDamage = 1);
+    // 使用杀时触发饮战（加伤），返回是否需要选择弃置的牌，通过引用参数返回是否加伤和是否触发乘势
+    bool useSlash(Player* target, int baseDamage, bool& yingZhanJiaShang, bool& chengShiTriggered);
     // 狂骨选项（回血/摸牌）
     void chooseKuangGuHeal();
     void chooseKuangGuDraw();
@@ -56,8 +59,6 @@ public:
     void startTurn();
     // 失去体力
     void loseHp(int amount);
-    // 获取到目标的距离
-    int getCurrentDistanceTo(Player* target) const;
 };
 
 #endif

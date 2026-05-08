@@ -12,6 +12,7 @@ void WeiYan::startTurn() {
     cardsUsedThisTurn = 0;
     slashUsedThisTurn = 0;
     slashCountLimit = 1;
+    wineBuffCount = 0;
     chengShiCanTrigger = false;
     chengShiDiscardedCard = nullptr;
 }
@@ -27,8 +28,10 @@ void WeiYan::activateZhuangShi(int discard, int hpLoss) {
     }
     if (hpLoss > 0) {
         zhuangShiHpLost = hpLoss;
+        zhuangShiNoLimitRemaining = hpLoss; // 前等量张牌不计入次数
+        zhuangShiNoLimitUsed = 0;
         this->loseHp(hpLoss);
-        qDebug() << "【壮誓】失去" << hpLoss << "点体力";
+        qDebug() << "【壮誓】失去" << hpLoss << "点体力，" << hpLoss << "张牌不计入次数";
     }
 }
 
@@ -38,11 +41,11 @@ void WeiYan::skipZhuangShi() {
     qDebug() << "【忠傲】使命失败！失去壮誓，获得困奋";
 }
 
-bool WeiYan::useSlash(Player* target, int baseDamage) {
-    int damage = baseDamage;
-    bool yingZhanJiaShang = false;
+bool WeiYan::useSlash(Player* target, int baseDamage, bool& yingZhanJiaShang, bool& chengShiTriggered) {
+    int damage = baseDamage + wineBuffCount; // 酒的buff层数
+    yingZhanJiaShang = false;
     bool yingZhanQiPai = false;
-    bool chengShiTrigger = false;
+    chengShiTriggered = false;
     chengShiDiscardedCard = nullptr;
     chengShiCanTrigger = false;
 
@@ -56,15 +59,23 @@ bool WeiYan::useSlash(Player* target, int baseDamage) {
         qDebug() << "【饮战】势魏延手牌≤目标，结算后弃置目标一张牌";
     }
     if (yingZhanJiaShang && yingZhanQiPai) {
-        chengShiTrigger = true;
+        chengShiTriggered = true;
         qDebug() << "【乘势】两个条件均满足！";
     }
 
     target->takeDamage(damage);
-    slashUsedThisTurn++;
+    
+    // 如果是壮誓不计入次数的牌，不增加使用次数
+    if (zhuangShiNoLimitRemaining > 0) {
+        zhuangShiNoLimitRemaining--;
+        zhuangShiNoLimitUsed++;
+    } else {
+        slashUsedThisTurn++;
+    }
+    wineBuffCount = 0; // 使用杀后清空酒buff
 
     if (yingZhanQiPai && !target->handCards.empty()) {
-        chengShiCanTrigger = chengShiTrigger;
+        chengShiCanTrigger = chengShiTriggered;
         return true;
     } else {
         chengShiCanTrigger = false;
@@ -147,12 +158,4 @@ void WeiYan::endTurn() {
 void WeiYan::loseHp(int amount) {
     this->hp -= amount;
     qDebug() << "失去" << amount << "点体力，当前：" << this->hp;
-}
-
-int WeiYan::getCurrentDistanceTo(Player* target) const {
-    int distance = 1;
-    if (this->equipment.minusHorse) distance--;
-    if (target->equipment.plusHorse) distance++;
-    if (distance < 1) distance = 1;
-    return distance;
 }
