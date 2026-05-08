@@ -1353,6 +1353,11 @@ void MainWindow::useSlashEffect(Player* source, Player* target, bool useWeiYanSk
         
         // 显示伤害
         appendLog(QString("【%1】受到%2点伤害，当前体力：%3").arg(target->name).arg(actualDamage).arg(target->hp));
+        
+        // 掉3滴血播放癫狂屠戮音效
+        if (actualDamage >= 3) {
+            playAudio("癫狂屠戮.mp3");
+        }
 
         if (needYingZhan) {
             playAudio("势魏延饮战.mp3"); // 饮战音效
@@ -1467,6 +1472,11 @@ void MainWindow::resolvePojunNoDodge(Player* target) {
 
     target->takeDamage(damage);
     appendLog(QString("【%1】受到%2点伤害，当前体力：%3").arg(target->name).arg(damage).arg(target->hp));
+    
+    // 掉3滴血播放癫狂屠戮音效
+    if (damage >= 3) {
+        playAudio("癫狂屠戮.mp3");
+    }
 
     if (target->hp <= 0) {
         discardPileCount += target->kouZhiCards.size();
