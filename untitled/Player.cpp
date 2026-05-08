@@ -46,6 +46,14 @@ int Player::getCurrentDistance() const {
     return d;
 }
 
+int Player::getCurrentDistanceTo(Player* target) const {
+    int distance = 1;
+    if (this->equipment.minusHorse) distance--;
+    if (target->equipment.plusHorse) distance++;
+    if (distance < 1) distance = 1;
+    return distance;
+}
+
 bool Player::hasCrossbow() const {
     return equipment.weapon && equipment.weapon->name == "诸葛连弩";
 }
@@ -64,6 +72,21 @@ bool Player::hasRenWangDun() const {
 
 bool Player::hasBaiYinShiZi() const {
     return equipment.armor && equipment.armor->name == "白银狮子";
+}
+
+int Player::getAttackRange() const {
+    int range = 1; // 默认攻击范围1
+    if (equipment.weapon) {
+        if (equipment.weapon->name == "麒麟弓") {
+            range = 5;
+        } else {
+            range = 2; // 其他武器（诸葛连弩、古锭刀等）都是攻击范围2
+        }
+    }
+    if (equipment.minusHorse) {
+        range += 1;
+    }
+    return range;
 }
 
 bool Player::hasSlash() const {

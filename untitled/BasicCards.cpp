@@ -19,7 +19,9 @@ void SlashCard::execute(Player* source, Player* target) {
 
     WeiYan* wy = dynamic_cast<WeiYan*>(source);
     if (wy) {
-        wy->useSlash(target, damage);
+        bool yingZhanJiaShang = false;
+        bool chengShiTriggered = false;
+        wy->useSlash(target, damage, yingZhanJiaShang, chengShiTriggered);
     } else {
         XuSheng* xs = dynamic_cast<XuSheng*>(source);
         if (xs) {
