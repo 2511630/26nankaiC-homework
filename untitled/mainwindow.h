@@ -14,6 +14,12 @@
 #include <QGraphicsDropShadowEffect>
 #include <QSpinBox>
 #include <QLineEdit>
+<<<<<<< Updated upstream
+=======
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QMovie>
+>>>>>>> Stashed changes
 #include <vector>
 #include "Player.h"
 #include "WeiYan.h"
@@ -127,10 +133,21 @@ private:
     QString pendingResponseCardName;
 
     QString imagePath;
+<<<<<<< Updated upstream
+=======
+    QString audioPath;
+    QString animationPath;
+
+    QMediaPlayer* mediaPlayer;
+    QAudioOutput* audioOutput;
+    Player* nearDeathPlayer;
+    
+    QLabel* skillAnimationLabel;
+    QMovie* skillAnimationMovie;
+>>>>>>> Stashed changes
 
     QLabel* lblPhase;
     QTextEdit* txtLog;
-    QLabel* skillAnimationLabel;
     QTimer* animationTimer;
 
     HeroCardWidget* heroXuSheng;
@@ -216,6 +233,11 @@ private:
     void triggerKuangGu(WeiYan* wy, Player* target, int damage);
     void showYingZhanCardSelection(Player* target);
     void onYingZhanCardSelected();
+<<<<<<< Updated upstream
+=======
+    void playAudio(const QString& audioName);
+    void playSkillAnimation(const QString& skillName);
+>>>>>>> Stashed changes
 };
 
 #endif // MAINWINDOW_H

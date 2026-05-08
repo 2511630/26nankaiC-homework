@@ -1,7 +1,7 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "WeiYan.h"
 #include "XuSheng.h"
+#include "ui_mainwindow.h"
 #include "DeckManager.h"
 #include "BasicCards.h"
 #include <QFile>
@@ -103,7 +103,19 @@ MainWindow::MainWindow(QWidget *parent)
     deck = new DeckManager();
     
     imagePath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/";
+<<<<<<< Updated upstream
     
+=======
+    audioPath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/音频/";
+    animationPath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/动画/";
+
+    // 初始化音频播放器
+    mediaPlayer = new QMediaPlayer(this);
+    audioOutput = new QAudioOutput(this);
+    mediaPlayer->setAudioOutput(audioOutput);
+    audioOutput->setVolume(1.0); // 音量100%
+
+>>>>>>> Stashed changes
     isWeiYanTurn = true;
     zhuangShiUsed = false;
     beiShuiUsed = false;
@@ -370,6 +382,11 @@ void MainWindow::initUI() {
             pojunSelectedIndices.clear();
             pojunSelectPanel->setVisible(false);
             appendLog("【破军】跳过扣牌");
+            
+            refreshHandCards();
+            updateUI();
+            updateConfirmState();
+
             appendLog("【破军】判断是否响应...");
             bool hasShan = false;
             int shanIndex = -1;
@@ -380,6 +397,7 @@ void MainWindow::initUI() {
                     break;
                 }
             }
+<<<<<<< Updated upstream
             if (hasShan && shanIndex >= 0) {
                 appendLog(QString("%1使用【闪】响应！").arg(pojunTarget->name));
                 pojunTarget->handCards.erase(pojunTarget->handCards.begin() + shanIndex);
@@ -389,6 +407,21 @@ void MainWindow::initUI() {
                 
                 enterFlowState(FlowState::TURN_PLAY_SELECT);
                 lblPhase->setText("出牌阶段 - 界·徐盛");
+=======
+
+            if (hasShan) {
+                // 有闪就自动使用
+                appendLog(QString("【%1】使用【闪】响应！").arg(pojunTarget->name));
+                // 移除这张闪
+                std::vector<std::shared_ptr<Card>> newHand;
+                for (size_t i = 0; i < pojunTarget->handCards.size(); ++i) {
+                    if ((int)i != shanIndex) newHand.push_back(pojunTarget->handCards[i]);
+                }
+                pojunTarget->handCards = newHand;
+                discardPileCount++;
+                discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+                resolvePojunDodge();
+>>>>>>> Stashed changes
             } else {
                 appendLog(QString("%1没有【闪】，无法响应！").arg(pojunTarget->name));
                 QTimer::singleShot(500, this, [this]() {
@@ -465,6 +498,18 @@ void MainWindow::initUI() {
     rightPanel->addWidget(txtLog);
     middleLayout->addLayout(rightPanel);
     mainLayout->addLayout(middleLayout, 1);
+    
+    // 初始化技能动画标签
+    skillAnimationLabel = new QLabel(centralWidget);
+    skillAnimationLabel->setAlignment(Qt::AlignCenter);
+    skillAnimationLabel->setStyleSheet("QLabel { background: transparent; }");
+    skillAnimationLabel->setVisible(false);
+    skillAnimationLabel->setFixedSize(700, 400); // 更大尺寸，适合长动画
+    skillAnimationLabel->setScaledContents(true); // 自动缩放填充
+    skillAnimationLabel->move(240, 250); // 屏幕中间位置
+    skillAnimationLabel->raise(); // 显示在最上层
+    
+    skillAnimationMovie = nullptr;
 
     QHBoxLayout* bottomLayout = new QHBoxLayout();
     bottomLayout->setSpacing(14);
@@ -849,7 +894,24 @@ void MainWindow::resolveSelectedCardPlay() {
             bool chengShiTriggered = false;
             bool needYingZhan = weiyan->useSlash(enemy, damage, yingZhanJiaShang, chengShiTriggered);
             
+<<<<<<< Updated upstream
             if (yingZhanJiaShang) {
+=======
+            int damage = 1;
+            if (weiyanWineBuffActive) {
+                damage += 1;
+                weiyanWineBuffActive = false;
+                appendLog("【酒】生效：伤害+1");
+            }
+            
+            // 壮誓无限制模式，不可以被响应，直接造成伤害
+            auto result = weiyan->useSlash(enemy, damage);
+            bool needYingZhan = result.first;
+            int actualDamage = result.second;
+            
+            // 显示饮战信息
+            if (weiyan->hp <= enemy->hp) {
+>>>>>>> Stashed changes
                 appendLog("【饮战】势魏延体力≤目标，伤害+1");
             }
             if (chengShiTriggered) {
@@ -1129,6 +1191,33 @@ void MainWindow::useSlashEffect(Player* source, Player* target, bool useWeiYanSk
     appendLog(QString("【%1】使用【杀】").arg(source->name));
 
     if (useWeiYanSkill) {
+        // 势魏延：先判断对方有没有闪
+        bool hasShan = false;
+        int shanIndex = -1;
+        for (size_t i = 0; i < target->handCards.size(); ++i) {
+            if (target->handCards[i]->getName() == "闪") {
+                hasShan = true;
+                shanIndex = i;
+                break;
+            }
+        }
+
+        if (hasShan) {
+            // 有闪就自动使用
+            appendLog(QString("【%1】使用【闪】响应！").arg(target->name));
+            // 移除这张闪
+            std::vector<std::shared_ptr<Card>> newHand;
+            for (size_t i = 0; i < target->handCards.size(); ++i) {
+                if ((int)i != shanIndex) newHand.push_back(target->handCards[i]);
+            }
+            target->handCards = newHand;
+            discardPileCount++;
+            discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+            refreshHandCards();
+            updateUI();
+            return;
+        }
+
         weiyan->cardsUsedThisTurn++;
         bool yingZhanJiaShang = false;
         bool chengShiTriggered = false;
@@ -1153,11 +1242,20 @@ void MainWindow::useSlashEffect(Player* source, Player* target, bool useWeiYanSk
         }
 
     } else {
+<<<<<<< Updated upstream
         xushengWineUsedThisTurn = true;
         xusheng->pojunTarget = target;
         xusheng->pojunKouZhiCount = target->hp;
         appendLog("【破军】请等待对方响应...");
         showPojunDodgeOption(target);
+=======
+        // 界徐盛：先破军扣牌，再判断闪
+        xusheng->slashUsedThisTurn++;
+        xusheng->pojunTarget = target;
+        xusheng->pojunKouZhiCount = target->hp;
+        playAudio("界徐盛破军.mp3"); // 破军音效
+        showPojunCardSelection(target); // 直接去扣牌
+>>>>>>> Stashed changes
     }
 }
 
@@ -1166,6 +1264,7 @@ void MainWindow::showPojunDodgeOption(Player* target) {
 }
 
 void MainWindow::resolvePojunSelect() {
+<<<<<<< Updated upstream
     if (flowState != FlowState::POJUN_SELECT) return;
     if (!xusheng->pojunTarget) return;
 
@@ -1210,6 +1309,9 @@ void MainWindow::resolvePojunSelect() {
             resolvePojunNoDodge(target);
         });
     }
+=======
+    // 这个函数现在不用了，破军逻辑在 onPojunConfirm 里
+>>>>>>> Stashed changes
 }
 
 void MainWindow::resolvePojunNoDodge(Player* target) {
@@ -1231,8 +1333,15 @@ void MainWindow::resolvePojunNoDodge(Player* target) {
     if (target->equipment.minusHorse) targetEquips++;
 
     int damage = 1;
+    // 先判断酒杀
+    if (xushengWineBuffActive) {
+        damage += 1;
+        xushengWineBuffActive = false;
+        appendLog("【酒】生效：伤害+1");
+    }
+    // 再判断破军加伤
     if (targetCards <= myCards && targetEquips <= myEquips) {
-        damage = 2;
+        damage += 1;
         appendLog(QString("【破军】徐盛手牌数(%1)%2%3张，装备数(%4)%5%6件")
             .arg(myCards).arg(myCards >= targetCards ? "≥" : "<").arg(targetCards)
             .arg(myEquips).arg(myEquips >= targetEquips ? "≥" : "<").arg(targetEquips));
@@ -1338,7 +1447,14 @@ void MainWindow::onZhuangShiConfirm() {
         updateUI();
         return;
     }
+<<<<<<< Updated upstream
     
+=======
+
+    playAudio("势魏延壮誓.mp3"); // 壮誓音效
+    playSkillAnimation("壮誓"); // 壮誓动画
+
+>>>>>>> Stashed changes
     zhuangShiUsed = true;
     zhuangShiPanel->setVisible(false);
     
@@ -1387,6 +1503,11 @@ void MainWindow::onZhuangShiCancel() {
     selectedDiscardIndices.clear();
     enterFlowState(FlowState::TURN_PLAY_SELECT);
     appendLog("【壮誓】取消，使命失败！失去壮誓，获得困奋");
+<<<<<<< Updated upstream
+=======
+    playAudio("势魏延使命失败进入困奋.mp3");
+    playSkillAnimation("困奋"); // 困奋动画
+>>>>>>> Stashed changes
     updateSkillPanelVisibility();
     updateConfirmState();
     refreshHandCards();
@@ -1819,7 +1940,8 @@ void MainWindow::onKunFenEndPhaseConfirm() {
     refreshHandCards();
     updateUI();
 
-    startXuShengTurn();
+    // 延迟2秒后再进入徐盛回合，让动画播完
+    QTimer::singleShot(2000, this, &MainWindow::startXuShengTurn);
 }
 
 void MainWindow::handleNearDeath(Player* player) {
@@ -1830,6 +1952,7 @@ void MainWindow::handleNearDeath(Player* player) {
     if (isWeiYanTurn && player == weiyan) {
         weiyan->skipZhuangShi();
         appendLog("【忠傲】进入濒死，使命失败！失去壮誓，获得困奋");
+<<<<<<< Updated upstream
     }
     
     // 自动自救：优先用酒，没有酒用桃
@@ -1884,6 +2007,62 @@ void MainWindow::handleNearDeath(Player* player) {
         // 没救了，阵亡
         appendLog(QString("【%1】无法自救，死亡！").arg(player->name));
         player->hp = 0;
+=======
+        playAudio("势魏延使命失败进入困奋.mp3");
+        playSkillAnimation("困奋"); // 困奋动画
+    }
+
+    // 优先找酒
+    bool hasJiu = false;
+    bool hasTao = false;
+    int jiuIndex = -1;
+    int taoIndex = -1;
+    for (size_t i = 0; i < player->handCards.size(); ++i) {
+        if (player->handCards[i]->getName() == "酒" && !hasJiu) {
+            hasJiu = true;
+            jiuIndex = i;
+        } else if (player->handCards[i]->getName() == "桃" && !hasTao) {
+            hasTao = true;
+            taoIndex = i;
+        }
+    }
+
+    int cardIndex = -1;
+    QString cardName;
+    if (hasJiu) {
+        cardIndex = jiuIndex;
+        cardName = "酒";
+    } else if (hasTao) {
+        cardIndex = taoIndex;
+        cardName = "桃";
+    }
+
+    if (cardIndex != -1) {
+        // 使用酒或桃自救
+        appendLog(QString("【%1】使用【%2】自救！").arg(player->name).arg(cardName));
+        // 移除这张牌
+        std::vector<std::shared_ptr<Card>> newHand;
+        for (size_t i = 0; i < player->handCards.size(); ++i) {
+            if ((int)i != cardIndex) newHand.push_back(player->handCards[i]);
+        }
+        player->handCards = newHand;
+        discardPileCount++;
+        discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+        // 回1血
+        player->heal(1);
+        appendLog(QString("【%1】回复1点体力，当前体力：%2").arg(player->name).arg(player->hp));
+        nearDeathPlayer = nullptr;
+        refreshHandCards();
+        updateUI();
+        return;
+    } else {
+        // 没酒没桃，死亡
+        appendLog(QString("【%1】无法自救，死亡！").arg(player->name));
+        player->hp = 0;
+        nearDeathPlayer = nullptr;
+        refreshHandCards();
+        updateUI();
+>>>>>>> Stashed changes
         checkGameOver();
     }
 }
@@ -2101,6 +2280,8 @@ void MainWindow::clearTableCards() {
 }
 
 void MainWindow::showPojunCardSelection(Player* target) {
+    appendLog(QString("【破军】showPojunCardSelection被调用，目标：%1，手牌数：%2").arg(target->name).arg(target->handCards.size()));
+
     qDeleteAll(pojunCardWidgets);
     pojunCardWidgets.clear();
 
@@ -2114,6 +2295,7 @@ void MainWindow::showPojunCardSelection(Player* target) {
     cardsLayout->setSpacing(10);
 
     int kouZhiLimit = target->hp;
+    pojunKouZhiCount = kouZhiLimit;
     lblPojunInfo->setText(QString("【破军】请选择要扣置的牌（0-%1张）").arg(kouZhiLimit));
 
     if (!target->handCards.empty()) {
@@ -2156,8 +2338,11 @@ void MainWindow::showPojunCardSelection(Player* target) {
     }
 
     ((QVBoxLayout*)pojunSelectPanel->layout())->addLayout(cardsLayout);
+    cardsLayout->setParent(pojunSelectPanel);
+    appendLog(QString("【破军】卡牌布局已添加，卡牌数量：%1").arg(pojunCardWidgets.size()));
     pojunSelectPanel->setVisible(true);
     pojunSelectPanel->raise();
+    appendLog(QString("【破军】pojunSelectPanel已设置为可见"));
 
     pojunTarget = target;
     pojunKouZhiCount = kouZhiLimit;
@@ -2221,6 +2406,7 @@ void MainWindow::onPojunConfirm() {
         }
     }
 
+<<<<<<< Updated upstream
     if (hasShan && shanIndex >= 0) {
         appendLog(QString("%1使用【闪】响应！").arg(pojunTarget->name));
         pojunTarget->handCards.erase(pojunTarget->handCards.begin() + shanIndex);
@@ -2230,6 +2416,20 @@ void MainWindow::onPojunConfirm() {
         
         enterFlowState(FlowState::TURN_PLAY_SELECT);
         lblPhase->setText("出牌阶段 - 界·徐盛");
+=======
+    if (hasShan) {
+        // 有闪就自动使用
+        appendLog(QString("【%1】使用【闪】响应！").arg(pojunTarget->name));
+        // 移除这张闪
+        std::vector<std::shared_ptr<Card>> newHand;
+        for (size_t i = 0; i < pojunTarget->handCards.size(); ++i) {
+            if ((int)i != shanIndex) newHand.push_back(pojunTarget->handCards[i]);
+        }
+        pojunTarget->handCards = newHand;
+        discardPileCount++;
+        discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
+        resolvePojunDodge();
+>>>>>>> Stashed changes
     } else {
         appendLog(QString("%1没有【闪】，无法响应！").arg(pojunTarget->name));
         QTimer::singleShot(500, this, [this]() {
@@ -2444,3 +2644,53 @@ void MainWindow::onYingZhanCardSelected() {
     refreshHandCards();
     updateUI();
 }
+<<<<<<< Updated upstream
+=======
+
+void MainWindow::playAudio(const QString& audioName) {
+    QString fullPath = audioPath + audioName;
+    mediaPlayer->setSource(QUrl::fromLocalFile(fullPath));
+    mediaPlayer->play();
+}
+
+void MainWindow::playSkillAnimation(const QString& skillName) {
+    QString gifPath;
+    if (skillName == "壮誓") {
+        gifPath = animationPath + "壮誓.gif";
+    } else if (skillName == "困奋") {
+        gifPath = animationPath + "困奋.gif";
+    } else {
+        return;
+    }
+    
+    if (skillAnimationMovie) {
+        skillAnimationMovie->stop();
+        delete skillAnimationMovie;
+        skillAnimationMovie = nullptr;
+    }
+    
+    skillAnimationMovie = new QMovie(gifPath);
+    if (!skillAnimationMovie->isValid()) {
+        delete skillAnimationMovie;
+        skillAnimationMovie = nullptr;
+        return;
+    }
+    
+    skillAnimationLabel->setMovie(skillAnimationMovie);
+    skillAnimationLabel->setVisible(true);
+    skillAnimationLabel->raise();
+    skillAnimationMovie->setSpeed(100);
+    skillAnimationMovie->start();
+    
+    animationTimer->stop();
+    animationTimer->disconnect();
+    connect(animationTimer, &QTimer::timeout, this, [this]() {
+        if (skillAnimationMovie) {
+            skillAnimationMovie->stop();
+        }
+        skillAnimationLabel->setVisible(false);
+    });
+    animationTimer->start(2000);
+}
+
+>>>>>>> Stashed changes

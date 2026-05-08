@@ -43,8 +43,15 @@ public:
     void skipZhuangShi();
     // 造成任意伤害后触发狂骨
     void onDamageDealt(Player* target, int damage);
+<<<<<<< Updated upstream
     // 使用杀时触发饮战（加伤），返回是否需要选择弃置的牌，通过引用参数返回是否加伤和是否触发乘势
     bool useSlash(Player* target, int baseDamage, bool& yingZhanJiaShang, bool& chengShiTriggered);
+=======
+    // 使用杀时触发饮战（加伤），返回是否需要选择弃置的牌
+    std::pair<bool, int> useSlash(Player* target, int baseDamage = 1);
+    // 旧版本：供 BasicCards.cpp 调用
+    void useSlash(Player* target, int baseDamage, bool& yingZhanJiaShang, bool& chengShiTriggered);
+>>>>>>> Stashed changes
     // 狂骨选项（回血/摸牌）
     void chooseKuangGuHeal();
     void chooseKuangGuDraw();

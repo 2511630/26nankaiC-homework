@@ -83,6 +83,38 @@ bool WeiYan::useSlash(Player* target, int baseDamage, bool& yingZhanJiaShang, bo
     }
 }
 
+void WeiYan::useSlash(Player* target, int baseDamage, bool& yingZhanJiaShang, bool& chengShiTriggered) {
+    int damage = baseDamage;
+    bool yingZhanQiPai = false;
+    yingZhanJiaShang = false;
+    chengShiTriggered = false;
+    chengShiDiscardedCard = nullptr;
+    chengShiCanTrigger = false;
+
+    if (this->hp <= target->hp) {
+        damage += 1;
+        yingZhanJiaShang = true;
+        qDebug() << "【饮战】势魏延体力≤目标，伤害+1";
+    }
+    if ((int)this->handCards.size() <= (int)target->handCards.size()) {
+        yingZhanQiPai = true;
+        qDebug() << "【饮战】势魏延手牌≤目标，结算后弃置目标一张牌";
+    }
+    if (yingZhanJiaShang && yingZhanQiPai) {
+        chengShiTriggered = true;
+        qDebug() << "【乘势】两个条件均满足！";
+    }
+
+    target->takeDamage(damage);
+    slashUsedThisTurn++;
+
+    if (yingZhanQiPai && !target->handCards.empty()) {
+        chengShiCanTrigger = chengShiTriggered;
+    } else {
+        chengShiCanTrigger = false;
+    }
+}
+
 void WeiYan::onDamageDealt(Player* target, int damage) {
     Q_UNUSED(target);
     Q_UNUSED(damage);
