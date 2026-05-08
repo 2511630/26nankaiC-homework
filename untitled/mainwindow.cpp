@@ -1386,7 +1386,9 @@ void MainWindow::resolvePojunSelect() {
                 target->handCards.erase(target->handCards.begin() + idx);
             }
         }
-        appendLog(QString("【破军】扣置%1张牌").arg(pojunSelectedIndices.size()));
+        appendLog(QString("【破军】扣置%1的%2张手牌").arg(target->name).arg(pojunSelectedIndices.size()));
+    } else {
+        appendLog(QString("【破军】未选择扣置任何手牌"));
     }
 
     pojunSelectedIndices.clear();
@@ -1394,7 +1396,6 @@ void MainWindow::resolvePojunSelect() {
     updateUI();
     updateConfirmState();
 
-    appendLog("【破军】判断是否响应...");
     bool hasShan = false;
     for (auto& card : target->handCards) {
         if (card->getName() == "闪") {
@@ -1474,7 +1475,6 @@ void MainWindow::resolvePojunDodge() {
     if (!xusheng->pojunTarget) return;
     Player* target = xusheng->pojunTarget;
 
-    appendLog(QString("%1使用【闪】响应，伤害取消！").arg(target->name));
     appendLog("【破军】扣置的牌保留到回合结束");
 
     xusheng->pojunTarget = nullptr;
