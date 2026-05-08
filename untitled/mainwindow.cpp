@@ -1353,17 +1353,22 @@ void MainWindow::useSlashEffect(Player* source, Player* target, bool useWeiYanSk
         
         // 显示伤害
         appendLog(QString("【%1】受到%2点伤害，当前体力：%3").arg(target->name).arg(actualDamage).arg(target->hp));
-        
-        // 掉3滴血播放癫狂屠戮音效
-        if (actualDamage >= 3) {
-            playAudio("癫狂屠戮.mp3");
-        }
 
         if (needYingZhan) {
             playAudio("势魏延饮战.mp3"); // 饮战音效
+            // 掉3滴血播放癫狂屠戮音效
+            if (actualDamage >= 3) {
+                QTimer::singleShot(1000, this, [this]() {
+                    playAudio("癫狂屠戮.mp3");
+                });
+            }
             showYingZhanCardSelection(target);
             return;
         } else {
+            // 掉3滴血播放癫狂屠戮音效
+            if (actualDamage >= 3) {
+                playAudio("癫狂屠戮.mp3");
+            }
             triggerKuangGu(weiyan, target, actualDamage);
             if (target->hp <= 0) {
                 appendLog(QString("【%1】进入濒死状态").arg(target->name));
@@ -2095,34 +2100,60 @@ void MainWindow::handleNearDeath(Player* player) {
         playSkillAnimation("困奋");
     }
 
-    bool canSave = false;
-    for (auto& card : player->handCards) {
-        if (card->getName() == "桃" || card->getName() == "酒") {
-            canSave = true;
+    bool saved = false;
+
+    // 优先找酒
+    for (auto it = player->handCards.begin(); it != player->handCards.end(); ++it) {
+        if ((*it)->getName() == "酒") {
+            player->handCards.erase(it);
+            player->heal(1);
+            appendLog(QString("【%1】使用【酒】自救，回复1点体力，当前体力：%2").arg(player->name).arg(player->hp));
+            saved = true;
             break;
         }
     }
 
-    if (!canSave) {
+    // 酒没找到，找桃
+    if (!saved) {
+        for (auto it = player->handCards.begin(); it != player->handCards.end(); ++it) {
+            if ((*it)->getName() == "桃") {
+                player->handCards.erase(it);
+                player->heal(1);
+                appendLog(QString("【%1】使用【桃】自救，回复1点体力，当前体力：%2").arg(player->name).arg(player->hp));
+                saved = true;
+                break;
+            }
+        }
+    }
+
+    if (saved && player->hp > 0) {
+        appendLog(QString("【%1】濒死获救！").arg(player->name));
+        nearDeathPlayer = nullptr;
+
+        if (inKunFenNearDeath) {
+            inKunFenNearDeath = false;
+            auto card1 = deck->draw();
+            if (card1) weiyan->drawCard(card1);
+            auto card2 = deck->draw();
+            if (card2) weiyan->drawCard(card2);
+            appendLog("【困奋】摸2张牌");
+            updateDeckDisplay();
+
+            refreshHandCards();
+            updateUI();
+
+            startXuShengTurn();
+        } else {
+            flowState = FlowState::TURN_PLAY_SELECT;
+            refreshHandCards();
+            updateUI();
+        }
+    } else {
         appendLog(QString("【%1】无法自救，死亡！").arg(player->name));
         player->hp = 0;
         nearDeathPlayer = nullptr;
         checkGameOver();
-        return;
     }
-
-    appendLog(">>> 请使用【桃】或【酒】自救");
-    flowState = FlowState::NEAR_DEATH;
-    btnConfirm->setVisible(false);
-    btnCancel->setVisible(false);
-    btnZhuangShi->setVisible(false);
-    btnBeiShui->setVisible(false);
-    btnEndTurn->setVisible(false);
-    btnKuangGuHeal->setVisible(false);
-    btnKuangGuDraw->setVisible(false);
-    btnKuangGuSkip->setVisible(false);
-    refreshHandCards();
-    updateUI();
 }
 
 void MainWindow::onWeiYanKuangGuHeal() {
