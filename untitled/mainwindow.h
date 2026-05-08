@@ -14,6 +14,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <QSpinBox>
 #include <QLineEdit>
+#include <QMediaPlayer>
+#include <QAudioOutput>
 #include <vector>
 #include "Player.h"
 #include "WeiYan.h"
@@ -96,7 +98,7 @@ private slots:
     void handleNearDeath(Player* player);
     void startDiscardPhase(Player* player);
     void onDiscardPhaseConfirm();
-    void useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target);
+    bool useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target, bool zhuangShiNoLimitActive = false);
     void useSlashEffect(Player* source, Player* target, bool useWeiYanSkill);
     void onTargetCardClicked(CardWidget* card);
     void showTargetCardSelection(Player* target, const QString& cardName);
@@ -127,6 +129,11 @@ private:
     QString pendingResponseCardName;
 
     QString imagePath;
+    QString audioPath;
+
+    QMediaPlayer* mediaPlayer;
+    QAudioOutput* audioOutput;
+    Player* nearDeathPlayer;
 
     QLabel* lblPhase;
     QTextEdit* txtLog;
@@ -216,6 +223,7 @@ private:
     void triggerKuangGu(WeiYan* wy, Player* target, int damage);
     void showYingZhanCardSelection(Player* target);
     void onYingZhanCardSelected();
+    void playAudio(const QString& audioName);
 };
 
 #endif // MAINWINDOW_H

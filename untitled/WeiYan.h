@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "Card.h"
 #include <memory>
+#include <utility>
 
 enum ZhongAoState { MISSION_ACTIVE, MISSION_SUCCESS, MISSION_FAILED };
 
@@ -25,8 +26,10 @@ public:
     int zhuangShiHpLost;    // 壮誓掉血数
     bool zhuangShiUsedThisTurn;
     int cardsUsedThisTurn;
-    int zhuangShiNoLimitRemaining; // 壮誓：无距离限制且不可被响应的剩余次数
+    int zhuangShiNoLimitRemaining; // 壮誓：无距离限制且不可被响应的剩余次数（对应弃牌N张）
     int zhuangShiNoLimitUsed;      // 壮誓：已使用的无距离限制次数
+    int zhuangShiNoCountRemaining; // 壮誓：不计入使用次数的剩余次数（对应掉血M张）
+    int zhuangShiNoCountUsed;      // 壮誓：已使用的不计入使用次数次数
     int slashUsedThisTurn;
     int slashCountLimit;
     
@@ -41,7 +44,7 @@ public:
     // 造成任意伤害后触发狂骨
     void onDamageDealt(Player* target, int damage);
     // 使用杀时触发饮战（加伤），返回是否需要选择弃置的牌
-    bool useSlash(Player* target, int baseDamage = 1);
+    std::pair<bool, int> useSlash(Player* target, int baseDamage = 1);
     // 狂骨选项（回血/摸牌）
     void chooseKuangGuHeal();
     void chooseKuangGuDraw();

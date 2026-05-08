@@ -10,6 +10,10 @@ void WeiYan::startTurn() {
     zhuangShiHpLost = 0;
     zhuangShiUsedThisTurn = false;
     cardsUsedThisTurn = 0;
+    zhuangShiNoLimitRemaining = 0;
+    zhuangShiNoLimitUsed = 0;
+    zhuangShiNoCountRemaining = 0;
+    zhuangShiNoCountUsed = 0;
     slashUsedThisTurn = 0;
     slashCountLimit = 1;
     chengShiCanTrigger = false;
@@ -38,7 +42,7 @@ void WeiYan::skipZhuangShi() {
     qDebug() << "【忠傲】使命失败！失去壮誓，获得困奋";
 }
 
-bool WeiYan::useSlash(Player* target, int baseDamage) {
+std::pair<bool, int> WeiYan::useSlash(Player* target, int baseDamage) {
     int damage = baseDamage;
     bool yingZhanJiaShang = false;
     bool yingZhanQiPai = false;
@@ -65,10 +69,10 @@ bool WeiYan::useSlash(Player* target, int baseDamage) {
 
     if (yingZhanQiPai && !target->handCards.empty()) {
         chengShiCanTrigger = chengShiTrigger;
-        return true;
+        return std::make_pair(true, damage);
     } else {
         chengShiCanTrigger = false;
-        return false;
+        return std::make_pair(false, damage);
     }
 }
 

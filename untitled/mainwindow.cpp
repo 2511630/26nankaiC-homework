@@ -45,7 +45,7 @@ HeroCardWidget::HeroCardWidget(const QString& heroName, const QString& imgPath, 
     heroImage->setFixedSize(120, 160);
     heroImage->setAlignment(Qt::AlignCenter);
     heroImage->setStyleSheet("QLabel { border: 2px solid rgba(214, 176, 116, 0.72); border-radius: 8px; }");
-    
+
     QPixmap pixmap(imgPath);
     if (!pixmap.isNull()) {
         heroImage->setPixmap(pixmap.scaled(115, 155, Qt::KeepAspectRatio, Qt::SmoothTransformation));
@@ -57,7 +57,7 @@ HeroCardWidget::HeroCardWidget(const QString& heroName, const QString& imgPath, 
     hpLayout = new QHBoxLayout();
     hpLayout->setSpacing(2);
     hpLayout->setAlignment(Qt::AlignCenter);
-    
+
     for (int i = 0; i < maxHp; ++i) {
         QLabel* hpIcon = new QLabel();
         hpIcon->setFixedSize(20, 20);
@@ -97,13 +97,20 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), selectedHandCardIndex(-1) {
     setWindowTitle("三国杀 - 势·魏延 VS 界·徐盛");
     setFixedSize(1280, 800);
-    
+
     weiyan = new WeiYan();
     xusheng = new XuSheng();
     deck = new DeckManager();
-    
+
     imagePath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/C++作业图片/";
-    
+    audioPath = "D:/OneDrive/Desktop/GitHub/26nankaiC-homework/音频/";
+
+    // 初始化音频播放器
+    mediaPlayer = new QMediaPlayer(this);
+    audioOutput = new QAudioOutput(this);
+    mediaPlayer->setAudioOutput(audioOutput);
+    audioOutput->setVolume(1.0); // 音量100%
+
     isWeiYanTurn = true;
     zhuangShiUsed = false;
     beiShuiUsed = false;
@@ -119,7 +126,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     yingZhanTarget = nullptr;
     yingZhanSelectedIndex = -1;
-    
+    nearDeathPlayer = nullptr;
+
     initUI();
 }
 
@@ -151,7 +159,7 @@ void MainWindow::initUI() {
         "QPushButton:pressed { background: rgba(35, 25, 18, 0.96); }"
         "QPushButton:disabled { color: rgba(230, 220, 200, 0.48); border-color: rgba(160, 140, 118, 0.45); background: rgba(22, 18, 16, 0.6); }"
         "QSpinBox { background: rgba(45, 35, 25, 0.9); color: #F4E1B6; border: 1px solid rgba(196, 153, 95, 0.92); border-radius: 6px; padding: 2px 4px; }"
-    );
+        );
 
     QHBoxLayout* topLayout = new QHBoxLayout();
     heroXuSheng = new HeroCardWidget("界·徐盛", imagePath + "界徐盛登场.png", 4);
@@ -511,13 +519,13 @@ void MainWindow::refreshHandCards() {
         delete item;
     }
 
-    Player* player = currentPlayer();
+    Player* player = (flowState == FlowState::NEAR_DEATH && nearDeathPlayer) ? nearDeathPlayer : currentPlayer();
     if (!player) return;
 
     for (size_t i = 0; i < player->handCards.size(); ++i) {
         QString cardName = player->handCards[i]->getName();
         CardWidget* cardWidget = new CardWidget(cardName, i);
-        
+
         QString imgPath = getCardImagePath(cardName);
         QPixmap pixmap(imgPath);
         if (!pixmap.isNull()) {
@@ -571,21 +579,21 @@ void MainWindow::refreshHandCards() {
 
 void MainWindow::onCardClicked(CardWidget* card) {
     if (flowState == FlowState::NEAR_DEATH) {
-        Player* player = currentPlayer();
+        Player* player = nearDeathPlayer;
         if (!player) return;
-        
+
         if (card->cardName == "桃") {
             auto it = std::find_if(player->handCards.begin(), player->handCards.end(),
-                [&card](std::shared_ptr<Card> c){ return c->getName() == card->cardName; });
+                                   [&card](std::shared_ptr<Card> c){ return c->getName() == card->cardName; });
             if (it != player->handCards.end()) {
                 player->handCards.erase(it);
             }
             player->heal(1);
             appendLog(QString("【%1】使用【桃】，回复1点体力，当前体力：%2").arg(player->name).arg(player->hp));
-            
+
             if (player->hp > 0) {
                 appendLog(QString("【%1】濒死获救！").arg(player->name));
-                
+
                 if (inKunFenNearDeath) {
                     inKunFenNearDeath = false;
                     auto card1 = deck->draw();
@@ -594,10 +602,10 @@ void MainWindow::onCardClicked(CardWidget* card) {
                     if (card2) weiyan->drawCard(card2);
                     appendLog("【困奋】摸2张牌");
                     updateDeckDisplay();
-                    
+
                     refreshHandCards();
                     updateUI();
-                    
+
                     startXuShengTurn();
                 } else {
                     flowState = FlowState::TURN_PLAY_SELECT;
@@ -607,14 +615,14 @@ void MainWindow::onCardClicked(CardWidget* card) {
             }
             return;
         }
-        
+
         if (card->cardName == "酒") {
             auto it = std::find_if(player->handCards.begin(), player->handCards.end(),
-                [&card](std::shared_ptr<Card> c){ return c->getName() == card->cardName; });
+                                   [&card](std::shared_ptr<Card> c){ return c->getName() == card->cardName; });
             if (it != player->handCards.end()) {
                 player->handCards.erase(it);
             }
-            
+
             if (player->hp > 0) {
                 if (isWeiYanTurn) {
                     weiyanWineUsedThisTurn = true;
@@ -631,7 +639,7 @@ void MainWindow::onCardClicked(CardWidget* card) {
                 appendLog(QString("【%1】濒死使用【酒】，回复1点体力，当前体力：%2").arg(player->name).arg(player->hp));
                 if (player->hp > 0) {
                     appendLog(QString("【%1】濒死获救！").arg(player->name));
-                    
+
                     if (inKunFenNearDeath) {
                         inKunFenNearDeath = false;
                         auto card1 = deck->draw();
@@ -640,10 +648,10 @@ void MainWindow::onCardClicked(CardWidget* card) {
                         if (card2) weiyan->drawCard(card2);
                         appendLog("【困奋】摸2张牌");
                         updateDeckDisplay();
-                        
+
                         refreshHandCards();
                         updateUI();
-                        
+
                         startXuShengTurn();
                     } else {
                         flowState = FlowState::TURN_PLAY_SELECT;
@@ -654,11 +662,11 @@ void MainWindow::onCardClicked(CardWidget* card) {
             }
             return;
         }
-        
+
         appendLog("濒死时只能使用【桃】或【酒】自救！");
         return;
     }
-    
+
     if (flowState == FlowState::ZHUANGSHI_SELECT) {
         auto it = std::find(zhuangShiSelectedCards.begin(), zhuangShiSelectedCards.end(), card->index);
         if (it != zhuangShiSelectedCards.end()) {
@@ -731,17 +739,27 @@ QString MainWindow::getCardImagePath(const QString& cardName) {
     QString cardPath = imagePath + cardName + ".jpg";
     QFile file(cardPath);
     if (file.exists()) return cardPath;
-    
+
     QString altPath = imagePath + cardName + ".png";
     QFile altFile(altPath);
     if (altFile.exists()) return altPath;
-    
+
     return imagePath + "卡牌背面.jpg";
 }
 
 bool MainWindow::isCardPlayable(const QString& cardName) const {
     if (!currentPlayer()) return false;
 
+    if (flowState == FlowState::NEAR_DEATH) {
+        if (cardName == "桃" || cardName == "酒") {
+            return nearDeathPlayer && (nearDeathPlayer == currentPlayer());
+        }
+        return false;
+    }
+
+    if (cardName == "闪") {
+        return false;
+    }
     if (cardName == "桃") {
         return currentPlayer()->hp < currentPlayer()->maxHp || currentPlayer()->hp <= 0;
     }
@@ -854,6 +872,95 @@ void MainWindow::resolveSelectedCardPlay() {
         return;
     }
 
+    if (flowState == FlowState::NEAR_DEATH) {
+        if (!nearDeathPlayer) return;
+        if (selectedHandCardIndex < 0 || pendingCardName.isEmpty()) return;
+        Player* player = nearDeathPlayer;
+        // Player* enemy = enemyPlayer();
+
+        // 只有濒死玩家自己能用桃/酒
+        if (currentPlayer() != nearDeathPlayer) {
+            appendLog("只能由濒死玩家自救！");
+            selectedHandCardIndex = -1;
+            pendingCardName.clear();
+            refreshHandCards();
+            return;
+        }
+
+        // 只能用桃或酒
+        if (pendingCardName != "桃" && pendingCardName != "酒") {
+            appendLog("濒死阶段只能使用【桃】或【酒】！");
+            selectedHandCardIndex = -1;
+            pendingCardName.clear();
+            refreshHandCards();
+            return;
+        }
+
+        std::shared_ptr<Card> selectedCard = nullptr;
+        int idx = 0;
+        for (auto it = player->handCards.begin(); it != player->handCards.end(); ++it) {
+            if (idx == selectedHandCardIndex) {
+                selectedCard = *it;
+                player->handCards.erase(it);
+                break;
+            }
+            idx++;
+        }
+        if (!selectedCard) return;
+
+        // 使用桃/酒
+        player->heal(1);
+        if (pendingCardName == "桃") {
+            appendLog(QString("【%1】使用【桃】自救，回复1点体力").arg(player->name));
+        } else {
+            appendLog(QString("【%1】使用【酒】自救，回复1点体力").arg(player->name));
+        }
+
+        selectedHandCardIndex = -1;
+        pendingCardName.clear();
+
+        // 判断是否救回来
+        if (player->hp > 0) {
+            appendLog(QString("【%1】脱离濒死状态！").arg(player->name));
+            nearDeathPlayer = nullptr;
+            // 恢复正常回合
+            flowState = FlowState::TURN_PLAY_SELECT;
+            btnConfirm->setVisible(true);
+            btnCancel->setVisible(true);
+            btnEndTurn->setVisible(true);
+            if (isWeiYanTurn) {
+                if (weiyan->zhongAoState == MISSION_ACTIVE && !weiyan->zhuangShiUsedThisTurn) {
+                    btnZhuangShi->setVisible(true);
+                }
+                if (weiyan->kuangGuLevel >= 2) {
+                    btnBeiShui->setVisible(true);
+                }
+            }
+            refreshHandCards();
+            updateSkillPanelVisibility();
+            updateUI();
+        } else {
+            // 还没救回来，继续
+            bool canSave = false;
+            for (auto& card : player->handCards) {
+                if (card->getName() == "桃" || card->getName() == "酒") {
+                    canSave = true;
+                    break;
+                }
+            }
+            if (!canSave) {
+                appendLog(QString("【%1】无法自救，死亡！").arg(player->name));
+                player->hp = 0;
+                nearDeathPlayer = nullptr;
+                checkGameOver();
+            } else {
+                refreshHandCards();
+                updateUI();
+            }
+        }
+        return;
+    }
+
     if (selectedHandCardIndex < 0 || pendingCardName.isEmpty()) return;
 
     Player* player = currentPlayer();
@@ -861,11 +968,20 @@ void MainWindow::resolveSelectedCardPlay() {
     if (!player || !enemy) return;
 
     bool zhuangShiNoLimitActive = false;
-    if (isWeiYanTurn && weiyan->zhuangShiNoLimitRemaining > 0) {
-        zhuangShiNoLimitActive = true;
-        weiyan->zhuangShiNoLimitRemaining--;
-        weiyan->zhuangShiNoLimitUsed++;
-        appendLog(QString("【壮誓】此牌无距离限制且不可被响应（剩余%1次）").arg(weiyan->zhuangShiNoLimitRemaining));
+    bool zhuangShiNoCountActive = false;
+    if (isWeiYanTurn) {
+        if (weiyan->zhuangShiNoLimitRemaining > 0) {
+            zhuangShiNoLimitActive = true;
+            weiyan->zhuangShiNoLimitRemaining--;
+            weiyan->zhuangShiNoLimitUsed++;
+            appendLog(QString("【壮誓】此牌无距离限制且不可被响应（剩余%1次）").arg(weiyan->zhuangShiNoLimitRemaining));
+        }
+        if (weiyan->zhuangShiNoCountRemaining > 0) {
+            zhuangShiNoCountActive = true;
+            weiyan->zhuangShiNoCountRemaining--;
+            weiyan->zhuangShiNoCountUsed++;
+            appendLog(QString("【壮誓】此牌不计入使用次数（剩余%1次）").arg(weiyan->zhuangShiNoCountRemaining));
+        }
     }
 
     std::shared_ptr<Card> selectedCard = nullptr;
@@ -883,12 +999,40 @@ void MainWindow::resolveSelectedCardPlay() {
 
     if (pendingCardName == "杀") {
         if (zhuangShiNoLimitActive) {
-            weiyan->cardsUsedThisTurn++;
-            weiyan->useSlash(enemy, 1);
-            triggerKuangGu(weiyan, enemy, 1);
-            if (enemy->hp <= 0) {
-                appendLog(QString("【%1】进入濒死状态").arg(enemy->name));
-                handleNearDeath(enemy);
+            if (!zhuangShiNoCountActive) {
+                weiyan->cardsUsedThisTurn++;
+            }
+            
+            int damage = 1;
+            if (weiyanWineBuffActive) {
+                damage += 1;
+                weiyanWineBuffActive = false;
+                appendLog("【酒】生效：伤害+1");
+            }
+            
+            auto result = weiyan->useSlash(enemy, damage);
+            bool needYingZhan = result.first;
+            int actualDamage = result.second;
+            
+            // 显示饮战信息
+            if (weiyan->hp <= enemy->hp) {
+                appendLog("【饮战】势魏延体力≤目标，伤害+1");
+            }
+            
+            // 显示伤害
+            appendLog(QString("【%1】受到%2点伤害，当前体力：%3").arg(enemy->name).arg(actualDamage).arg(enemy->hp));
+            
+            if (needYingZhan) {
+                playAudio("势魏延饮战.mp3"); // 饮战音效
+                showYingZhanCardSelection(enemy);
+                return;
+            } else {
+                triggerKuangGu(weiyan, enemy, actualDamage);
+                if (enemy->hp <= 0) {
+                    appendLog(QString("【%1】进入濒死状态").arg(enemy->name));
+                    handleNearDeath(enemy);
+                    if (enemy->hp <= 0) return; // 如果死了就不继续了
+                }
             }
         } else {
             useSlashEffect(player, enemy, isWeiYanTurn);
@@ -911,7 +1055,11 @@ void MainWindow::resolveSelectedCardPlay() {
             appendLog(QString("【%1】使用【酒】，下一张杀伤害+1").arg(player->name));
         }
     } else if (pendingCardName == "决斗" || pendingCardName == "南蛮入侵" || pendingCardName == "万箭齐发") {
-        useCardEffect(selectedCard, player, enemy);
+        bool triggeredKuangGu = useCardEffect(selectedCard, player, enemy, zhuangShiNoLimitActive);
+        if (triggeredKuangGu) {
+            // 触发狂骨了，中断后续流程，等待用户选择狂骨
+            return;
+        }
     } else if (pendingCardName == "顺手牵羊") {
         if (!zhuangShiNoLimitActive && player->getCurrentDistance() > 1) {
             appendLog("【顺手牵羊】失败：距离超过1");
@@ -942,7 +1090,7 @@ void MainWindow::resolveSelectedCardPlay() {
         selectedCard->execute(player, enemy);
     }
 
-    if (isWeiYanTurn) {
+    if (isWeiYanTurn && !zhuangShiNoCountActive) {
         weiyan->cardsUsedThisTurn++;
     }
 
@@ -953,77 +1101,126 @@ void MainWindow::resolveSelectedCardPlay() {
     updateUI();
 }
 
-void MainWindow::useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target) {
+bool MainWindow::useCardEffect(std::shared_ptr<Card> card, Player* source, Player* target, bool zhuangShiNoLimitActive) {
     QString cardName = card->name;
     appendLog(QString("【%1】使用【%2】").arg(source->name).arg(cardName));
+    bool triggeredKuangGu = false;
 
     if (cardName == "决斗") {
         Player* attacker = source;
         Player* defender = target;
-        while (true) {
+        if (zhuangShiNoLimitActive) {
+            // 不可响应，直接受伤
+            appendLog(QString("【壮誓】不可被响应，【%1】无法打出牌").arg(defender->name));
+            defender->takeDamage(1);
+            appendLog(QString("【%1】受到1点伤害").arg(defender->name));
+            if (isWeiYanTurn && attacker == weiyan) {
+                triggerKuangGu(weiyan, defender, 1);
+                triggeredKuangGu = true;
+            }
+            if (defender->hp <= 0) {
+                handleNearDeath(defender);
+                if (defender->hp <= 0) return triggeredKuangGu;
+            }
+        } else {
+            while (true) {
+                bool hasSlash = false;
+                for (auto it = defender->handCards.begin(); it != defender->handCards.end(); ++it) {
+                    if ((*it)->name == "杀") {
+                        defender->handCards.erase(it);
+                        hasSlash = true;
+                        appendLog(QString("【%1】打出【杀】").arg(defender->name));
+                        std::swap(attacker, defender);
+                        break;
+                    }
+                }
+                if (!hasSlash) {
+                    defender->takeDamage(1);
+                    appendLog(QString("【%1】无法打出【杀】，受到1点伤害").arg(defender->name));
+                    if (isWeiYanTurn && attacker == weiyan) {
+                        triggerKuangGu(weiyan, defender, 1);
+                        triggeredKuangGu = true;
+                    }
+                    if (defender->hp <= 0) {
+                        handleNearDeath(defender);
+                        if (defender->hp <= 0) return triggeredKuangGu;
+                    }
+                    break;
+                }
+            }
+        }
+    } else if (cardName == "南蛮入侵") {
+        if (zhuangShiNoLimitActive) {
+            // 不可响应，直接受伤
+            appendLog(QString("【壮誓】不可被响应，【%1】无法打出牌").arg(target->name));
+            target->takeDamage(1);
+            appendLog(QString("【%1】受到1点伤害").arg(target->name));
+            if (isWeiYanTurn && source == weiyan) {
+                triggerKuangGu(weiyan, target, 1);
+                triggeredKuangGu = true;
+            }
+            if (target->hp <= 0) {
+                handleNearDeath(target);
+                if (target->hp <= 0) return triggeredKuangGu;
+            }
+        } else {
             bool hasSlash = false;
-            for (auto it = defender->handCards.begin(); it != defender->handCards.end(); ++it) {
+            for (auto it = target->handCards.begin(); it != target->handCards.end(); ++it) {
                 if ((*it)->name == "杀") {
-                    defender->handCards.erase(it);
+                    target->handCards.erase(it);
                     hasSlash = true;
-                    appendLog(QString("【%1】打出【杀】").arg(defender->name));
-                    std::swap(attacker, defender);
+                    appendLog(QString("【%1】打出【杀】，抵消伤害").arg(target->name));
                     break;
                 }
             }
             if (!hasSlash) {
-                defender->takeDamage(1);
-                appendLog(QString("【%1】无法打出【杀】，受到1点伤害").arg(defender->name));
-                if (isWeiYanTurn && attacker == weiyan) {
-                    weiyan->cardsUsedThisTurn++;
-                    triggerKuangGu(weiyan, defender, 1);
+                target->takeDamage(1);
+                appendLog(QString("【%1】无法打出【杀】，受到1点伤害").arg(target->name));
+                if (isWeiYanTurn && source == weiyan) {
+                    triggerKuangGu(weiyan, target, 1);
+                    triggeredKuangGu = true;
                 }
-                if (defender->hp <= 0) {
-                    handleNearDeath(defender);
+                if (target->hp <= 0) {
+                    handleNearDeath(target);
+                    if (target->hp <= 0) return triggeredKuangGu;
                 }
-                break;
-            }
-        }
-    } else if (cardName == "南蛮入侵") {
-        bool hasSlash = false;
-        for (auto it = target->handCards.begin(); it != target->handCards.end(); ++it) {
-            if ((*it)->name == "杀") {
-                target->handCards.erase(it);
-                hasSlash = true;
-                appendLog(QString("【%1】打出【杀】，抵消伤害").arg(target->name));
-                break;
-            }
-        }
-        if (!hasSlash) {
-            target->takeDamage(1);
-            appendLog(QString("【%1】无法打出【杀】，受到1点伤害").arg(target->name));
-            if (isWeiYanTurn && source == weiyan) {
-                weiyan->cardsUsedThisTurn++;
-                triggerKuangGu(weiyan, target, 1);
-            }
-            if (target->hp <= 0) {
-                handleNearDeath(target);
             }
         }
     } else if (cardName == "万箭齐发") {
-        bool hasDodge = false;
-        for (auto it = target->handCards.begin(); it != target->handCards.end(); ++it) {
-            if ((*it)->name == "闪") {
-                target->handCards.erase(it);
-                hasDodge = true;
-                appendLog(QString("【%1】打出【闪】，抵消伤害").arg(target->name));
-                break;
-            }
-        }
-        if (!hasDodge) {
+        if (zhuangShiNoLimitActive) {
+            // 不可响应，直接受伤
+            appendLog(QString("【壮誓】不可被响应，【%1】无法打出牌").arg(target->name));
             target->takeDamage(1);
-            appendLog(QString("【%1】无法打出【闪】，受到1点伤害").arg(target->name));
+            appendLog(QString("【%1】受到1点伤害").arg(target->name));
             if (isWeiYanTurn && source == weiyan) {
-                weiyan->cardsUsedThisTurn++;
                 triggerKuangGu(weiyan, target, 1);
+                triggeredKuangGu = true;
             }
             if (target->hp <= 0) {
                 handleNearDeath(target);
+                if (target->hp <= 0) return triggeredKuangGu;
+            }
+        } else {
+            bool hasDodge = false;
+            for (auto it = target->handCards.begin(); it != target->handCards.end(); ++it) {
+                if ((*it)->name == "闪") {
+                    target->handCards.erase(it);
+                    hasDodge = true;
+                    appendLog(QString("【%1】打出【闪】，抵消伤害").arg(target->name));
+                    break;
+                }
+            }
+            if (!hasDodge) {
+                target->takeDamage(1);
+                appendLog(QString("【%1】无法打出【闪】，受到1点伤害").arg(target->name));
+                if (isWeiYanTurn && source == weiyan) {
+                    triggerKuangGu(weiyan, target, 1);
+                    triggeredKuangGu = true;
+                }
+                if (target->hp <= 0) {
+                    handleNearDeath(target);
+                    if (target->hp <= 0) return triggeredKuangGu;
+                }
             }
         }
     } else if (cardName == "顺手牵羊") {
@@ -1092,25 +1289,29 @@ void MainWindow::useCardEffect(std::shared_ptr<Card> card, Player* source, Playe
     } else {
         card->execute(source, target);
     }
+    return triggeredKuangGu;
 }
 
 void MainWindow::triggerKuangGu(WeiYan* wy, Player* target, int /*damage*/) {
     if (wy->zhongAoState != MISSION_ACTIVE && wy->zhongAoState != MISSION_SUCCESS) return;
-    
+
     int distance = wy->getCurrentDistanceTo(target);
     if (distance > 1) {
         appendLog(QString("【狂骨】目标距离%1超过1，不触发").arg(distance));
         return;
     }
-    
+
+    playAudio("势魏延狂骨.mp3"); // 狂骨音效
+
     appendLog(QString("【狂骨】对距离1以内角色造成伤害，请选择："));
     btnKuangGuHeal->setVisible(true);
     btnKuangGuDraw->setVisible(true);
     btnKuangGuSkip->setVisible(true);
-    btnKuangGuHeal->setEnabled(true);
+    // 满血时禁用回血按钮
+    btnKuangGuHeal->setEnabled(wy->hp < wy->maxHp);
     btnKuangGuDraw->setEnabled(true);
     btnKuangGuSkip->setEnabled(true);
-    
+
     if (target->hp <= 0) {
         wy->onKill(target);
     }
@@ -1132,23 +1333,36 @@ void MainWindow::useSlashEffect(Player* source, Player* target, bool useWeiYanSk
 
     if (useWeiYanSkill) {
         weiyan->cardsUsedThisTurn++;
-        bool needYingZhan = weiyan->useSlash(target, damage);
+        auto result = weiyan->useSlash(target, damage);
+        bool needYingZhan = result.first;
+        int actualDamage = result.second;
+        
+        // 显示饮战信息
+        if (weiyan->hp <= target->hp) {
+            appendLog("【饮战】势魏延体力≤目标，伤害+1");
+        }
+        
+        // 显示伤害
+        appendLog(QString("【%1】受到%2点伤害，当前体力：%3").arg(target->name).arg(actualDamage).arg(target->hp));
 
         if (needYingZhan) {
+            playAudio("势魏延饮战.mp3"); // 饮战音效
             showYingZhanCardSelection(target);
             return;
         } else {
-            triggerKuangGu(weiyan, target, damage);
+            triggerKuangGu(weiyan, target, actualDamage);
             if (target->hp <= 0) {
                 appendLog(QString("【%1】进入濒死状态").arg(target->name));
                 handleNearDeath(target);
+                if (target->hp <= 0) return;
             }
         }
 
     } else {
-        xushengWineUsedThisTurn = true;
+        xusheng->slashUsedThisTurn++;
         xusheng->pojunTarget = target;
         xusheng->pojunKouZhiCount = target->hp;
+        playAudio("界徐盛破军.mp3"); // 破军音效
         appendLog("【破军】请等待对方响应...");
         showPojunDodgeOption(target);
     }
@@ -1176,6 +1390,9 @@ void MainWindow::resolvePojunSelect() {
     }
 
     pojunSelectedIndices.clear();
+    refreshHandCards();
+    updateUI();
+    updateConfirmState();
 
     appendLog("【破军】判断是否响应...");
     bool hasShan = false;
@@ -1224,13 +1441,13 @@ void MainWindow::resolvePojunNoDodge(Player* target) {
     if (targetCards <= myCards && targetEquips <= myEquips) {
         damage = 2;
         appendLog(QString("【破军】徐盛手牌数(%1)%2%3张，装备数(%4)%5%6件")
-            .arg(myCards).arg(myCards >= targetCards ? "≥" : "<").arg(targetCards)
-            .arg(myEquips).arg(myEquips >= targetEquips ? "≥" : "<").arg(targetEquips));
+                      .arg(myCards).arg(myCards >= targetCards ? "≥" : "<").arg(targetCards)
+                      .arg(myEquips).arg(myEquips >= targetEquips ? "≥" : "<").arg(targetEquips));
         appendLog("【破军】伤害+1！");
     } else {
         appendLog(QString("【破军】徐盛手牌数%1%2%3张，装备数%4%5%6件")
-            .arg(myCards).arg(myCards >= targetCards ? "≥" : "<").arg(targetCards)
-            .arg(myEquips).arg(myEquips >= targetEquips ? "≥" : "<").arg(targetEquips));
+                      .arg(myCards).arg(myCards >= targetCards ? "≥" : "<").arg(targetCards)
+                      .arg(myEquips).arg(myEquips >= targetEquips ? "≥" : "<").arg(targetEquips));
     }
 
     target->takeDamage(damage);
@@ -1243,6 +1460,7 @@ void MainWindow::resolvePojunNoDodge(Player* target) {
         discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
         appendLog(QString("【%1】进入濒死状态").arg(target->name));
         handleNearDeath(target);
+        return;
     }
 
     xusheng->pojunTarget = nullptr;
@@ -1291,8 +1509,8 @@ void MainWindow::showCardOnTable(QLabel* slot, const QString& cardName) {
 
 void MainWindow::updateSkillPanelVisibility() {
     bool isDiscardPhase = flowState == FlowState::DISCARD_PHASE;
-    bool isZhuangShiPhase = flowState == FlowState::ZHUANGSHI_SELECT || 
-                            flowState == FlowState::ZHUANGSHI_SELECT_CARDS || 
+    bool isZhuangShiPhase = flowState == FlowState::ZHUANGSHI_SELECT ||
+                            flowState == FlowState::ZHUANGSHI_SELECT_CARDS ||
                             flowState == FlowState::ZHUANGSHI_SELECT_HP ||
                             flowState == FlowState::ZHUANGSHI_DISCARD;
 
@@ -1309,15 +1527,16 @@ void MainWindow::updateSkillPanelVisibility() {
 void MainWindow::onZhuangShiConfirm() {
     bool ok;
     int hpLossCount = editZhuangShiHpLoss->text().toInt(&ok);
-    if (!ok || hpLossCount < 0 || hpLossCount >= weiyan->hp) {
-        appendLog("请输入有效的掉血数量（0到" + QString::number(weiyan->hp - 1) + "之间）！");
+    if (!ok || hpLossCount < 0 || hpLossCount > weiyan->hp) {
+        appendLog("请输入有效的掉血数量（0到" + QString::number(weiyan->hp) + "之间）！");
         return;
     }
     int discardCount = (int)zhuangShiSelectedCards.size();
-    
+
     if (discardCount == 0 && hpLossCount == 0) {
         // 使命失败
         appendLog("【壮誓】既不弃牌也不掉血，使命失败！失去壮誓，获得困奋");
+        playAudio("势魏延使命失败进入困奋.mp3");
         weiyan->skipZhuangShi();
         zhuangShiUsed = true;
         zhuangShiPanel->setVisible(false);
@@ -1328,10 +1547,12 @@ void MainWindow::onZhuangShiConfirm() {
         updateUI();
         return;
     }
-    
+
+    playAudio("势魏延壮誓.mp3"); // 壮誓音效
+
     zhuangShiUsed = true;
     zhuangShiPanel->setVisible(false);
-    
+
     if (discardCount > 0) {
         // 执行弃牌
         std::sort(zhuangShiSelectedCards.rbegin(), zhuangShiSelectedCards.rend());
@@ -1343,27 +1564,39 @@ void MainWindow::onZhuangShiConfirm() {
         }
         discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
         weiyan->zhuangShiDiscarded = discardCount;
+        weiyan->zhuangShiNoLimitRemaining = discardCount;
         appendLog(QString("【壮誓】弃置%1张牌，本回合前%1张牌【无距离限制且不可响应】").arg(discardCount));
     }
-    
+
     if (hpLossCount > 0) {
         // 执行掉血
-        weiyan->zhuangShiHpLost = hpLossCount;
         weiyan->loseHp(hpLossCount);
-        appendLog(QString("【壮誓】失去%1点体力，本回合有%1张牌【不计入次数】").arg(hpLossCount));
-        
+        appendLog(QString("【壮誓】失去%1点体力").arg(hpLossCount));
+
         if (weiyan->hp <= 0) {
+            // 使命失败
+            weiyan->skipZhuangShi();
+            appendLog("【壮誓】失去全部体力，使命失败！失去壮誓，获得困奋");
+            playAudio("势魏延使命失败进入困奋.mp3");
             handleNearDeath(weiyan);
+        } else {
+            weiyan->zhuangShiHpLost = hpLossCount;
+            weiyan->zhuangShiNoCountRemaining = hpLossCount;
+            weiyan->zhuangShiUsedThisTurn = true;
+            weiyan->zhuangShiNoLimitUsed = 0;
+            weiyan->zhuangShiNoCountUsed = 0;
+            enterFlowState(FlowState::TURN_PLAY_SELECT);
+        }
+    } else {
+        weiyan->zhuangShiHpLost = hpLossCount;
+        weiyan->zhuangShiUsedThisTurn = true;
+        weiyan->zhuangShiNoLimitUsed = 0;
+        weiyan->zhuangShiNoCountUsed = 0;
+        if (weiyan->hp > 0) {
+            enterFlowState(FlowState::TURN_PLAY_SELECT);
         }
     }
-    
-    weiyan->zhuangShiUsedThisTurn = true;
-    weiyan->zhuangShiNoLimitRemaining = discardCount + hpLossCount;
-    weiyan->zhuangShiNoLimitUsed = 0;
-    
-    if (weiyan->hp > 0) {
-        enterFlowState(FlowState::TURN_PLAY_SELECT);
-    }
+
     updateSkillPanelVisibility();
     updateConfirmState();
     refreshHandCards();
@@ -1377,6 +1610,7 @@ void MainWindow::onZhuangShiCancel() {
     selectedDiscardIndices.clear();
     enterFlowState(FlowState::TURN_PLAY_SELECT);
     appendLog("【壮誓】取消，使命失败！失去壮誓，获得困奋");
+    playAudio("势魏延使命失败进入困奋.mp3");
     updateSkillPanelVisibility();
     updateConfirmState();
     refreshHandCards();
@@ -1384,15 +1618,16 @@ void MainWindow::onZhuangShiCancel() {
 }
 
 void MainWindow::onStartGame() {
+    playAudio("点击开始游戏音效.mp3");
     resetGame();
-    
+
     gDeck = deck;
     deck->shuffle();
     for (int i = 0; i < 4; ++i) {
         weiyan->drawCard(deck->draw());
         xusheng->drawCard(deck->draw());
     }
-    
+
     isWeiYanTurn = true;
     zhuangShiUsed = false;
     beiShuiUsed = false;
@@ -1402,7 +1637,7 @@ void MainWindow::onStartGame() {
     xushengWineBuffActive = false;
     discardPileCount = 0;
     discardPileLabel->setText("弃牌堆：0");
-    
+
     btnStart->setVisible(false);
     startWeiYanTurn();
 }
@@ -1411,14 +1646,14 @@ void MainWindow::resetGame() {
     delete weiyan;
     delete xusheng;
     delete deck;
-    
+
     weiyan = new WeiYan();
     xusheng = new XuSheng();
     deck = new DeckManager();
-    
+
     heroWeiYan->setHp(5);
     heroXuSheng->setHp(4);
-    
+
     flowState = FlowState::START_MENU;
     isWeiYanTurn = true;
     zhuangShiUsed = false;
@@ -1427,10 +1662,10 @@ void MainWindow::resetGame() {
     pendingCardName.clear();
     selectedDiscardIndices.clear();
     inKunFenNearDeath = false;
-    
+
     yingZhanTarget = nullptr;
     yingZhanSelectedIndex = -1;
-    
+
     btnKuangGuHeal->setVisible(false);
     btnKuangGuDraw->setVisible(false);
     btnKuangGuSkip->setVisible(false);
@@ -1453,16 +1688,16 @@ void MainWindow::startWeiYanTurn() {
     weiyanWineBuffActive = false;
     zhuangShiSelectedCards.clear();
     editZhuangShiHpLoss->setText("0");
-    
+
     lblPhase->setText("出牌阶段 - 势·魏延");
     lblPhase->setStyleSheet("font-size: 20px; font-weight: bold; color: #F44336;");
-    
+
     weiyan->drawCard(deck->draw());
     weiyan->drawCard(deck->draw());
     updateDeckDisplay();
     appendLog("=== 势·魏延 回合 ===");
     appendLog("势·魏延摸2张牌");
-    
+
     if (weiyan->zhongAoState == MISSION_ACTIVE) {
         enterFlowState(FlowState::ZHUANGSHI_SELECT);
         zhuangShiPanel->setVisible(true);
@@ -1475,7 +1710,7 @@ void MainWindow::startWeiYanTurn() {
     } else {
         enterFlowState(FlowState::TURN_PLAY_SELECT);
     }
-    
+
     refreshHandCards();
     updateSkillPanelVisibility();
     updateConfirmState();
@@ -1506,6 +1741,7 @@ void MainWindow::startXuShengTurn() {
 
 void MainWindow::checkGameOver() {
     if (weiyan->hp <= 0) {
+        playAudio("势魏延输了.mp3");
         lblPhase->setText("游戏结束 - 界·徐盛 获胜！");
         lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #2196F3;");
         QMessageBox::information(this, "游戏结束", "界·徐盛 获胜！");
@@ -1517,6 +1753,7 @@ void MainWindow::checkGameOver() {
         btnKuangGuDraw->setVisible(false);
         btnKuangGuSkip->setVisible(false);
     } else if (xusheng->hp <= 0) {
+        playAudio("势魏延赢了.mp3");
         lblPhase->setText("游戏结束 - 势·魏延 获胜！");
         lblPhase->setStyleSheet("font-size: 24px; font-weight: bold; color: #F44336;");
         QMessageBox::information(this, "游戏结束", "势·魏延 获胜！");
@@ -1533,6 +1770,7 @@ void MainWindow::checkGameOver() {
 void MainWindow::updateUI() {
     heroWeiYan->setHp(weiyan->hp);
     heroXuSheng->setHp(xusheng->hp);
+    updateEquipmentDisplay();
     txtLog->ensureCursorVisible();
 }
 
@@ -1567,16 +1805,16 @@ void MainWindow::onWeiYanBeiShui() {
         appendLog("没有手牌可弃置！");
         return;
     }
-    
+
     auto card = weiyan->handCards.back();
     weiyan->handCards.pop_back();
     weiyan->slashCountLimit++;
     beiShuiUsed = true;
     discardPileCount++;
     discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
-    
+
     appendLog(QString("【背水】弃置【%1】，本回合杀次数+1").arg(card->name));
-    
+
     refreshHandCards();
     updateSkillPanelVisibility();
     updateUI();
@@ -1692,7 +1930,7 @@ void MainWindow::updateDeckDisplay() {
     if (!deck) return;
     int deckCount = deck->deck.size();
     lblDeckCount->setText(QString::number(deckCount));
-    
+
     if (deckCount == 0) {
         appendLog("牌堆已空，重新洗牌...");
         for (int i = 0; i < 50; ++i) {
@@ -1737,12 +1975,12 @@ void MainWindow::startDiscardPhase(Player* player) {
 
 void MainWindow::onDiscardPhaseConfirm() {
     Player* player = isWeiYanTurn ? static_cast<Player*>(weiyan) : static_cast<Player*>(xusheng);
-    
+
     if ((int)selectedDiscardIndices.size() != discardPhaseCount) {
         appendLog(QString("请选择%1张牌！").arg(discardPhaseCount));
         return;
     }
-    
+
     std::sort(selectedDiscardIndices.rbegin(), selectedDiscardIndices.rend());
     for (int idx : selectedDiscardIndices) {
         if (idx < (int)player->handCards.size()) {
@@ -1751,11 +1989,11 @@ void MainWindow::onDiscardPhaseConfirm() {
         }
     }
     discardPileLabel->setText(QString("弃牌堆：%1").arg(discardPileCount));
-    
+
     selectedDiscardIndices.clear();
     btnConfirm->setVisible(false);
     btnCancel->setVisible(false);
-    
+
     if (isWeiYanTurn) {
         startXuShengTurn();
     } else {
@@ -1811,14 +2049,16 @@ void MainWindow::onKunFenEndPhaseConfirm() {
 
 void MainWindow::handleNearDeath(Player* player) {
     if (player->hp > 0) return;
-    
+
     appendLog(QString("【%1】进入濒死状态！体力：%2").arg(player->name).arg(player->hp));
-    
+    nearDeathPlayer = player;
+
     if (isWeiYanTurn && player == weiyan) {
         weiyan->skipZhuangShi();
         appendLog("【忠傲】进入濒死，使命失败！失去壮誓，获得困奋");
+        playAudio("势魏延使命失败进入困奋.mp3");
     }
-    
+
     bool canSave = false;
     for (auto& card : player->handCards) {
         if (card->getName() == "桃" || card->getName() == "酒") {
@@ -1826,14 +2066,15 @@ void MainWindow::handleNearDeath(Player* player) {
             break;
         }
     }
-    
+
     if (!canSave) {
         appendLog(QString("【%1】无法自救，死亡！").arg(player->name));
         player->hp = 0;
+        nearDeathPlayer = nullptr;
         checkGameOver();
         return;
     }
-    
+
     appendLog(">>> 请使用【桃】或【酒】自救");
     flowState = FlowState::NEAR_DEATH;
     btnConfirm->setVisible(false);
@@ -2115,6 +2356,154 @@ void MainWindow::showPojunCardSelection(Player* target) {
         }
     }
 
+    if (target->equipment.weapon) {
+        CardWidget* cardWidget = new CardWidget(target->equipment.weapon->name, 100);
+        QString imgPath = getCardImagePath(target->equipment.weapon->name);
+        QPixmap pixmap(imgPath);
+        if (!pixmap.isNull()) {
+            cardWidget->setPixmap(pixmap.scaled(80, 114, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            cardWidget->setText(target->equipment.weapon->name);
+        }
+        cardWidget->setToolTip("武器");
+        connect(cardWidget, &CardWidget::clicked, this, [this, cardWidget](CardWidget*) {
+            if (flowState != FlowState::SELECT_POJUN_TARGET) return;
+            if (!pojunTarget) return;
+
+            int idx = cardWidget->index;
+
+            auto it = std::find(pojunSelectedIndices.begin(), pojunSelectedIndices.end(), idx);
+            if (it != pojunSelectedIndices.end()) {
+                pojunSelectedIndices.erase(it);
+                cardWidget->setStyleSheet("");
+                cardWidget->setProperty("selected", false);
+            } else {
+                if ((int)pojunSelectedIndices.size() < pojunKouZhiCount) {
+                    pojunSelectedIndices.push_back(idx);
+                    cardWidget->setStyleSheet("QLabel { border: 3px solid #FFD700; border-radius: 8px; }");
+                    cardWidget->setProperty("selected", true);
+                }
+            }
+
+            int selectedCount = pojunSelectedIndices.size();
+            lblPojunInfo->setText(QString("【破军】已选择%1张牌，最多可扣%2张").arg(selectedCount).arg(pojunKouZhiCount));
+            updateConfirmState();
+        });
+        pojunCardWidgets.append(cardWidget);
+        cardsLayout->addWidget(cardWidget);
+    }
+
+    if (target->equipment.armor) {
+        CardWidget* cardWidget = new CardWidget(target->equipment.armor->name, 101);
+        QString imgPath = getCardImagePath(target->equipment.armor->name);
+        QPixmap pixmap(imgPath);
+        if (!pixmap.isNull()) {
+            cardWidget->setPixmap(pixmap.scaled(80, 114, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            cardWidget->setText(target->equipment.armor->name);
+        }
+        cardWidget->setToolTip("防具");
+        connect(cardWidget, &CardWidget::clicked, this, [this, cardWidget](CardWidget*) {
+            if (flowState != FlowState::SELECT_POJUN_TARGET) return;
+            if (!pojunTarget) return;
+
+            int idx = cardWidget->index;
+
+            auto it = std::find(pojunSelectedIndices.begin(), pojunSelectedIndices.end(), idx);
+            if (it != pojunSelectedIndices.end()) {
+                pojunSelectedIndices.erase(it);
+                cardWidget->setStyleSheet("");
+                cardWidget->setProperty("selected", false);
+            } else {
+                if ((int)pojunSelectedIndices.size() < pojunKouZhiCount) {
+                    pojunSelectedIndices.push_back(idx);
+                    cardWidget->setStyleSheet("QLabel { border: 3px solid #FFD700; border-radius: 8px; }");
+                    cardWidget->setProperty("selected", true);
+                }
+            }
+
+            int selectedCount = pojunSelectedIndices.size();
+            lblPojunInfo->setText(QString("【破军】已选择%1张牌，最多可扣%2张").arg(selectedCount).arg(pojunKouZhiCount));
+            updateConfirmState();
+        });
+        pojunCardWidgets.append(cardWidget);
+        cardsLayout->addWidget(cardWidget);
+    }
+
+    if (target->equipment.plusHorse) {
+        CardWidget* cardWidget = new CardWidget(target->equipment.plusHorse->name, 102);
+        QString imgPath = getCardImagePath(target->equipment.plusHorse->name);
+        QPixmap pixmap(imgPath);
+        if (!pixmap.isNull()) {
+            cardWidget->setPixmap(pixmap.scaled(80, 114, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            cardWidget->setText(target->equipment.plusHorse->name);
+        }
+        cardWidget->setToolTip("+1马");
+        connect(cardWidget, &CardWidget::clicked, this, [this, cardWidget](CardWidget*) {
+            if (flowState != FlowState::SELECT_POJUN_TARGET) return;
+            if (!pojunTarget) return;
+
+            int idx = cardWidget->index;
+
+            auto it = std::find(pojunSelectedIndices.begin(), pojunSelectedIndices.end(), idx);
+            if (it != pojunSelectedIndices.end()) {
+                pojunSelectedIndices.erase(it);
+                cardWidget->setStyleSheet("");
+                cardWidget->setProperty("selected", false);
+            } else {
+                if ((int)pojunSelectedIndices.size() < pojunKouZhiCount) {
+                    pojunSelectedIndices.push_back(idx);
+                    cardWidget->setStyleSheet("QLabel { border: 3px solid #FFD700; border-radius: 8px; }");
+                    cardWidget->setProperty("selected", true);
+                }
+            }
+
+            int selectedCount = pojunSelectedIndices.size();
+            lblPojunInfo->setText(QString("【破军】已选择%1张牌，最多可扣%2张").arg(selectedCount).arg(pojunKouZhiCount));
+            updateConfirmState();
+        });
+        pojunCardWidgets.append(cardWidget);
+        cardsLayout->addWidget(cardWidget);
+    }
+
+    if (target->equipment.minusHorse) {
+        CardWidget* cardWidget = new CardWidget(target->equipment.minusHorse->name, 103);
+        QString imgPath = getCardImagePath(target->equipment.minusHorse->name);
+        QPixmap pixmap(imgPath);
+        if (!pixmap.isNull()) {
+            cardWidget->setPixmap(pixmap.scaled(80, 114, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            cardWidget->setText(target->equipment.minusHorse->name);
+        }
+        cardWidget->setToolTip("-1马");
+        connect(cardWidget, &CardWidget::clicked, this, [this, cardWidget](CardWidget*) {
+            if (flowState != FlowState::SELECT_POJUN_TARGET) return;
+            if (!pojunTarget) return;
+
+            int idx = cardWidget->index;
+
+            auto it = std::find(pojunSelectedIndices.begin(), pojunSelectedIndices.end(), idx);
+            if (it != pojunSelectedIndices.end()) {
+                pojunSelectedIndices.erase(it);
+                cardWidget->setStyleSheet("");
+                cardWidget->setProperty("selected", false);
+            } else {
+                if ((int)pojunSelectedIndices.size() < pojunKouZhiCount) {
+                    pojunSelectedIndices.push_back(idx);
+                    cardWidget->setStyleSheet("QLabel { border: 3px solid #FFD700; border-radius: 8px; }");
+                    cardWidget->setProperty("selected", true);
+                }
+            }
+
+            int selectedCount = pojunSelectedIndices.size();
+            lblPojunInfo->setText(QString("【破军】已选择%1张牌，最多可扣%2张").arg(selectedCount).arg(pojunKouZhiCount));
+            updateConfirmState();
+        });
+        pojunCardWidgets.append(cardWidget);
+        cardsLayout->addWidget(cardWidget);
+    }
+
     ((QVBoxLayout*)pojunSelectPanel->layout())->addLayout(cardsLayout);
     pojunSelectPanel->setVisible(true);
     pojunSelectPanel->raise();
@@ -2160,15 +2549,40 @@ void MainWindow::onPojunConfirm() {
     if (!pojunSelectedIndices.empty()) {
         std::sort(pojunSelectedIndices.rbegin(), pojunSelectedIndices.rend());
         for (int idx : pojunSelectedIndices) {
-            if (idx >= 0 && idx < (int)pojunTarget->handCards.size()) {
-                xusheng->kouZhiCards.push_back(pojunTarget->handCards[idx]);
-                pojunTarget->handCards.erase(pojunTarget->handCards.begin() + idx);
+            if (idx >= 0 && idx < 100) {
+                if (idx < (int)pojunTarget->handCards.size()) {
+                    xusheng->kouZhiCards.push_back(pojunTarget->handCards[idx]);
+                    pojunTarget->handCards.erase(pojunTarget->handCards.begin() + idx);
+                }
+            } else if (idx == 100) {
+                if (pojunTarget->equipment.weapon) {
+                    xusheng->kouZhiCards.push_back(pojunTarget->equipment.weapon);
+                    pojunTarget->equipment.weapon = nullptr;
+                }
+            } else if (idx == 101) {
+                if (pojunTarget->equipment.armor) {
+                    xusheng->kouZhiCards.push_back(pojunTarget->equipment.armor);
+                    pojunTarget->equipment.armor = nullptr;
+                }
+            } else if (idx == 102) {
+                if (pojunTarget->equipment.plusHorse) {
+                    xusheng->kouZhiCards.push_back(pojunTarget->equipment.plusHorse);
+                    pojunTarget->equipment.plusHorse = nullptr;
+                }
+            } else if (idx == 103) {
+                if (pojunTarget->equipment.minusHorse) {
+                    xusheng->kouZhiCards.push_back(pojunTarget->equipment.minusHorse);
+                    pojunTarget->equipment.minusHorse = nullptr;
+                }
             }
         }
         appendLog(QString("【破军】扣置%1张牌").arg(pojunSelectedIndices.size()));
     }
 
     pojunSelectPanel->setVisible(false);
+    refreshHandCards();
+    updateUI();
+    updateConfirmState();
 
     appendLog("【破军】判断是否响应...");
     bool hasShan = false;
@@ -2194,8 +2608,6 @@ void MainWindow::onPojunConfirm() {
         });
     }
 }
-
-
 
 void MainWindow::showYingZhanCardSelection(Player* target) {
     qDeleteAll(targetCardWidgets);
@@ -2401,3 +2813,10 @@ void MainWindow::onYingZhanCardSelected() {
     refreshHandCards();
     updateUI();
 }
+
+void MainWindow::playAudio(const QString& audioName) {
+    QString fullPath = audioPath + audioName;
+    mediaPlayer->setSource(QUrl::fromLocalFile(fullPath));
+    mediaPlayer->play();
+}
+
